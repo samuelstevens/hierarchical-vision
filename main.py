@@ -21,13 +21,14 @@ from composer.callbacks import (
     OptimizerMonitor,
     SpeedMonitor,
 )
-from composer.loggers import FileLogger, WandBLogger
+from composer.loggers import FileLogger
 from composer.utils import dist, reproducibility
 from omegaconf import OmegaConf
 
 import configs
 import data
 import models
+import monkey_patch
 import optim
 import utils
 
@@ -104,7 +105,7 @@ def main(config):
         save_interval=config.save.interval,
     )
     loggers = [
-        WandBLogger(
+        monkey_patch.WandBLogger(
             entity="imageomics",
             project="hierarchical-vision",
             log_artifacts=True,
