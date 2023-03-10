@@ -1,0 +1,52 @@
+run_name: r50_inat21_base
+is_train: true
+seed: 17
+max_duration: 90ep
+grad_accum: auto
+
+model:
+  name: resnet50
+  loss_name: cross_entropy
+
+train_dataset:
+  # Training image resize size before crop, -1 means no resize
+  resize_size: -1
+  crop_size: 224
+  global_batch_size: 2048
+  channel_mean: [ 0.463, 0.480, 0.376 ]
+  channel_std: [ 0.238, 0.229, 0.247 ]
+
+eval_dataset:
+  # Evaluation image resize size before crop
+  resize_size: 256
+  crop_size: 224
+  global_batch_size: 2048
+  # training mean/std
+  channel_mean: [ 0.463, 0.480, 0.376 ]
+  channel_std: [ 0.238, 0.229, 0.247 ]
+
+optim:
+  name: DecoupledSGDW
+  lr: 2.048
+  momentum: 0.875
+  weight_decay: 5.0e-4
+
+scheduler:
+  t_warmup: 8ep
+  # Decay to base * alpha_f
+  alpha_f: 0.0
+
+loggers:
+  file:
+    filename: "log{rank}.txt"
+    overwrite: true
+  wandb:
+    entity: imageomics
+    project: hierarchical-vision
+    log_artifacts: true
+
+# Save checkpoint parameters
+save:
+  interval: 10ep             # Interval to checkpoint based on time string
+  num_checkpoints_to_keep: 1 # Cleans up checkpoints saved locally only!
+  overwrite: true

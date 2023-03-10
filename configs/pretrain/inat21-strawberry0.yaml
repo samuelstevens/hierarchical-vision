@@ -1,0 +1,8 @@
+train_dataset:
+  path: /local/scratch/cv_datasets/inat21/raw/
+
+eval_dataset:
+  path: /local/scratch/cv_datasets/inat21/raw/
+
+save:
+  root: '/local/scratch/stevens.994/hierarchical-vision/'

@@ -1,0 +1,47 @@
+max_duration: 270ep
+
+model:
+  loss_name: binary_cross_entropy
+
+train_dataset:
+  crop_size: 176
+
+eval_dataset:
+  resize_size: 232
+
+algorithms:
+  - cls: BlurPool
+  - cls: ChannelsLast
+  - cls: EMA
+    args:
+      half_life: 100ba
+      update_interval: 20ba
+  - cls: ProgressiveResizing
+    args:
+      initial_scale: 0.5
+      delay_fraction: 0.4
+      finetune_fraction: 0.2
+  - cls: LabelSmoothing
+    args:
+      smoothing: 0.08
+  - cls: MixUp
+    args:
+      alpha: 0.2
+  - cls: SAM
+    args:
+      rho: 0.5
+      interval: 10
+  - cls: ColOut
+    args:
+      p_col: 0.05
+      p_row: 0.05
+  - cls: RandAugment
+    args:
+      depth: 1
+      severity: 9
+  - cls: StochasticDepth
+    args:
+      target_layer_name: ResNetBottleneck
+      stochastic_method: sample
+      drop_distribution: linear
+      drop_rate: 0.1

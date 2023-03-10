@@ -1,0 +1,30 @@
+max_duration: 36ep
+
+model:
+  loss_name: binary_cross_entropy
+
+train_dataset:
+  crop_size: 176
+
+eval_dataset:
+  resize_size: 232
+
+algorithms:
+  - cls: BlurPool
+  - cls: ChannelsLast
+  - cls: EMA
+    args:
+      half_life: 100ba
+      update_interval: 20ba
+  - cls: ProgressiveResizing
+    args:
+      initial_scale: 0.5
+      delay_fraction: 0.4
+      finetune_fraction: 0.2
+  - cls: LabelSmoothing
+    args:
+      smoothing: 0.08
+  - cls: GradientClipping
+    args:
+      clipping_type: norm
+      clipping_threshold: 2.0
