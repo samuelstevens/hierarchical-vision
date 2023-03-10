@@ -109,7 +109,7 @@ def main(config):
             project="hierarchical-vision",
             log_artifacts=True,
             rank_zero_only=True,
-            init_kwargs={"dir": os.path.join(save_folder, "wandb")},
+            init_kwargs={"dir": save_folder},
         ),
         FileLogger(
             filename=os.path.join(save_folder, "logs", "log{rank}.txt"), overwrite=True
@@ -162,20 +162,7 @@ def main(config):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--base", help="Base YAML file", required=True)
-    parser.add_argument(
-        "--machine",
-        help="Machine-specific YAML file (will include data folders, output folders, etc).",
-        required=True,
-    )
-    parser.add_argument(
-        "--extra", help="Extra configs you want to include.", nargs="+", default=[]
-    )
-    parser.add_argument(
-        "--exp",
-        help="Experiment-specific YAML file (might have different a learning rate, for example).",
-    )
-
+    utils.add_exp_args(parser)
     return parser.parse_args()
 
 

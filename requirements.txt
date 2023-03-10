@@ -1,4 +1,6 @@
-mosaicml==0.13.1
-wandb
 einops
+mosaicml==0.13.1
+omegaconf
 preface
+timm
+wandb
