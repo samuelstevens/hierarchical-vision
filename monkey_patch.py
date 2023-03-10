@@ -40,7 +40,6 @@ class WandBLogger(composer.loggers.WandBLogger):
         extension = new_remote_file_name.split(".")[-1]
 
         if extension == "txt":
-            print("Not uploading any .txt files.")
             return
 
         metadata = {
