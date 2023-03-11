@@ -1,0 +1,13 @@
+run_name: r50_inat21_cross_entropy
+seed: 0
+
+optim:
+  lr: 2.0
+  momentum: 0.875
+  weight_decay: 0.0025
+
+save:
+  interval:
+  num_checkpoints_to_keep: 1
+  overwrite: true
+  wandb: true
