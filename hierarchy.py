@@ -66,6 +66,8 @@ class MultitaskCrossEntropy(torch.nn.CrossEntropyLoss):
 
     def forward(self, inputs, targets):
         if not isinstance(targets, list):
+            # If we don't use label smoothing, targets is a
+            # B x tiers tensor (2048 x 7 for ResNet + iNat21).
             targets = einops.rearrange(targets, "batch tiers -> tiers batch")
 
         assert (
@@ -80,7 +82,6 @@ class MultitaskCrossEntropy(torch.nn.CrossEntropyLoss):
                 for input, target in zip(inputs, targets)
             ]
         )
-
         return torch.dot(self.coeffs, losses)
 
 

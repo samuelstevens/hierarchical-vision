@@ -55,12 +55,37 @@ def main(config):
     )
     print("Built evaluation dataloader\n")
 
-    # Instantiate torchvision ResNet model
+    # Checkpointing stuff
+    # -------------------
+    save_folder = os.path.join(config.save.root, config.run_name)
+    checkpoint_saver = CheckpointSaver(
+        folder=os.path.join(save_folder, "checkpoints"),
+        overwrite=True,
+        num_checkpoints_to_keep=config.save.num_checkpoints_to_keep,
+        save_interval=config.save.interval,
+        remote_file_name="{run_name}-ep{epoch}-rank{rank}",
+    )
+    loggers = [
+        monkey_patch.WandBLogger(
+            entity="imageomics",
+            project="hierarchical-vision",
+            log_artifacts=True,
+            rank_zero_only=True,
+            init_kwargs={"dir": save_folder},
+        ),
+        FileLogger(
+            filename=os.path.join(save_folder, "logs", "log{rank}.txt"), overwrite=True
+        ),
+    ]
+
+    # Model
+    # -----
     print("Building Composer model")
-    composer_model = models.build_composer_model(config, num_classes)
+    composer_model = models.build_model(config, num_classes)
     print("Built Composer model\n")
 
     # Optimizer
+    # ---------
     print("Building optimizer and learning rate scheduler")
     optimizer = optim.build_optimizer(config, composer_model)
 
@@ -85,8 +110,21 @@ def main(config):
     # Overview" in our documentation: https://docs.mosaicml.com/
     print("Building algorithm recipes")
     algorithms = []
+
+    if config.model.pretrained_checkpoint:
+        algorithms.append(
+            utils.LoadFromWandB(
+                config.wandb.entity,
+                config.wandb.project,
+                config.model.pretrained_checkpoint,
+            )
+        )
+
     for algorithm in config.algorithms:
-        cls = getattr(composer.algorithms, algorithm.cls)
+        if algorithm.cls in monkey_patch.patched_algorithms:
+            cls = getattr(monkey_patch, algorithm.cls)
+        else:
+            cls = getattr(composer.algorithms, algorithm.cls)
         algorithms.append(cls(**algorithm.args))
     print("Built algorithm recipes\n")
 
@@ -141,8 +179,8 @@ def main(config):
     print("Logging config:\n")
     utils.log_config(config)
 
-    print("Run evaluation")
-    trainer.eval()
+    # print("Run evaluation")
+    # trainer.eval()
     if config.is_train:
         print("Train!")
         trainer.fit()

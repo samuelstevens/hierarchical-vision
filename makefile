@@ -3,4 +3,4 @@ fmt:
 	fd -e py | xargs black
 
 lint:
-	fd -e py | xargs ruff --fix
+	fd -e py | xargs ruff

@@ -7,7 +7,12 @@ Args = dict[str, Any]
 @dataclass
 class ModelConfig:
     name: str = "resnet50"
-    loss_name: str = "cross_entropy"
+    # Can be full-tuning or linear-probing
+    # Will include KNN in the future.
+    variant: str = "full-tuning"
+
+    # If it exists, load this checkpoint from wandb.
+    pretrained_checkpoint: Optional[tuple[str, str]] = None
 
 
 @dataclass
@@ -52,8 +57,10 @@ class SaveConfig:
     wandb: bool = True
 
 
-def default_logger_config():
-    return {"file": {"filename": "log{rank}.txt", "overwrite": True}}
+@dataclass
+class WandbConfig:
+    entity: str = "imageomics"
+    project: str = "hierarchical-vision"
 
 
 @dataclass
@@ -91,6 +98,6 @@ class Config:
     eval_dataset: DatasetConfig = field(default_factory=DatasetConfig)
     optim: OptimConfig = field(default_factory=OptimConfig)
     scheduler: SchedulerConfig = field(default_factory=SchedulerConfig)
-    loggers: dict[str, Args] = field(default_factory=default_logger_config)
     algorithms: list[AlgorithmConfig] = field(default_factory=list)
     save: SaveConfig = field(default_factory=SaveConfig)
+    wandb: WandbConfig = field(default_factory=WandbConfig)
