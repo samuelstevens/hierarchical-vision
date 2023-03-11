@@ -6,3 +6,4 @@ eval_dataset:
 
 save:
   root: /fs/scratch/PAS2136/hierarchical-vision/models
+  interval:

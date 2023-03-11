@@ -45,9 +45,11 @@ class SchedulerConfig:
 @dataclass
 class SaveConfig:
     root: str = "."
-    interval: str = "10ep"
+    interval: Optional[str] = "10ep"
     num_checkpoints_to_keep: int = 1
     overwrite: bool = True
+    # Whether to save checkpoints to a remote (wandb)
+    wandb: bool = True
 
 
 def default_logger_config():

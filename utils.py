@@ -1,3 +1,4 @@
+import composer
 import wandb
 from omegaconf import DictConfig, OmegaConf
 
@@ -31,3 +32,11 @@ def add_exp_args(parser):
         "--exp",
         help="Experiment-specific YAML file (might have different a learning rate, for example).",
     )
+
+
+def save_last_only(state: composer.State, event: composer.Event):
+    elapsed_duration = state.get_elapsed_duration()
+    assert elapsed_duration is not None, "internal error"
+
+    # Only checkpoint at end of training
+    return elapsed_duration >= 1.0

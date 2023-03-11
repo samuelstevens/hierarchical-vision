@@ -10,8 +10,6 @@
 # Activate virtual environment
 source $HOME/projects/hierarchical-vision/venv/bin/activate
 
-env
-
 # Run job
 composer main.py \
   --base $BASE_CONFIG_FILE \

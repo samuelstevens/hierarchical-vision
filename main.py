@@ -14,13 +14,7 @@ import composer
 import composer.algorithms
 import composer.optim
 import torch
-from composer.callbacks import (
-    CheckpointSaver,
-    LRMonitor,
-    MemoryMonitor,
-    OptimizerMonitor,
-    SpeedMonitor,
-)
+from composer.callbacks import CheckpointSaver, LRMonitor, MemoryMonitor, SpeedMonitor
 from composer.loggers import FileLogger
 from composer.utils import dist, reproducibility
 from omegaconf import OmegaConf
@@ -82,7 +76,6 @@ def main(config):
     speed_monitor = SpeedMonitor(window_size=50)
     lr_monitor = LRMonitor()  # Logs the learning rate
     memory_monitor = MemoryMonitor()  # Logs memory utilization
-    optim_monitor = OptimizerMonitor()
 
     # Callback for checkpointing
     print("Built monitoring callbacks\n")
@@ -102,13 +95,13 @@ def main(config):
         folder=os.path.join(save_folder, "checkpoints"),
         overwrite=True,
         num_checkpoints_to_keep=config.save.num_checkpoints_to_keep,
-        save_interval=config.save.interval,
+        save_interval=(config.save.interval or utils.save_last_only),
     )
     loggers = [
         monkey_patch.WandBLogger(
             entity="imageomics",
             project="hierarchical-vision",
-            log_artifacts=True,
+            log_artifacts=config.save.wandb,
             rank_zero_only=True,
             init_kwargs={"dir": save_folder},
         ),
@@ -135,13 +128,7 @@ def main(config):
         loggers=loggers,
         progress_bar=True,
         max_duration=config.max_duration,
-        callbacks=[
-            speed_monitor,
-            lr_monitor,
-            memory_monitor,
-            optim_monitor,
-            checkpoint_saver,
-        ],
+        callbacks=[speed_monitor, lr_monitor, memory_monitor, checkpoint_saver],
         save_folder=None,
         load_path=config.load_path,
         device=device,

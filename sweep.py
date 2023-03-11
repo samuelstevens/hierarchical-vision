@@ -46,20 +46,26 @@ def main():
 
     sweep_config = utils.load_config(args.sweep)
 
-    orig_run_name = sweep_config.pop("run_name")
+    run_name = sweep_config.pop("run_name")
 
     search_space = to_search_space(OmegaConf.to_container(sweep_config))
 
     # Make the output directory for the generated configs
-    output_dir = pathlib.Path(args.output) / f"sweep-{orig_run_name}"
+    output_dir = pathlib.Path(args.output) / f"sweep-{run_name}"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     for i, trial in enumerate(tqdm(halton.generate_search(search_space, args.count))):
-        config = OmegaConf.create({"seed": i})
+        config = OmegaConf.create(
+            {
+                "seed": i,
+                # Dont' save any checkpoints for sweeps.
+                # We will always train another model for later use.
+                "save": {"interval": None, "wandb": False},
+                "run_name": f"{run_name}-{i}",
+            }
+        )
         for key, value in trial.items():
             OmegaConf.update(config, key, value)
-
-        config.run_name = f"{orig_run_name}-{i}"
 
         # Write the file
         path = output_dir / f"{config.run_name}.yaml"
