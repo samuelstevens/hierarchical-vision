@@ -179,8 +179,8 @@ def main(config):
     print("Logging config:\n")
     utils.log_config(config)
 
-    # print("Run evaluation")
-    # trainer.eval()
+    print("Run evaluation")
+    trainer.eval()
     if config.is_train:
         print("Train!")
         trainer.fit()

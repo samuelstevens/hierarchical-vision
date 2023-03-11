@@ -1,6 +1,7 @@
 import composer
-import wandb
 from omegaconf import DictConfig, OmegaConf
+
+import wandb
 
 
 def log_config(cfg: DictConfig):
@@ -40,3 +41,27 @@ def save_last_only(state: composer.State, event: composer.Event):
 
     # Only checkpoint at end of training
     return elapsed_duration >= 1.0
+
+
+class LoadFromWandB(composer.Algorithm):
+    def __init__(self, entity, project, checkpoint):
+        # TODO: this checkpoint thing needs to be much clearer.
+        # It interacts with the way wandb saves files.
+        self.wandb_path = f"{entity}/{project}/{checkpoint}"
+        self.filename = checkpoint
+
+    def match(self, event, state):
+        return event == composer.Event.INIT
+
+    def apply(self, event, state, logger):
+        if not wandb.run:
+            raise RuntimeError("Call wandb.init before this!")
+
+        downloaded_filepath = (
+            wandb.run.use_artifact(self.path, type="model")
+            .get_path(self.filename)
+            .download()
+        )
+        composer.utils.load_checkpoint(
+            downloaded_filepath, state, logger, load_weights_only=True
+        )

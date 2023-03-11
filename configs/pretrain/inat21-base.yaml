@@ -6,7 +6,6 @@ grad_accum: auto
 
 model:
   name: resnet50
-  loss_name: cross_entropy
 
 train_dataset:
   # Training image resize size before crop, -1 means no resize
@@ -35,15 +34,6 @@ scheduler:
   t_warmup: 8ep
   # Decay to base * alpha_f
   alpha_f: 0.0
-
-loggers:
-  file:
-    filename: "log{rank}.txt"
-    overwrite: true
-  wandb:
-    entity: imageomics
-    project: hierarchical-vision
-    log_artifacts: true
 
 # Save checkpoint parameters
 save:

@@ -12,7 +12,7 @@ import configs
 import hierarchy
 
 
-def build_composer_model(config: configs.Config, num_classes: int | list[int]):
+def build_model(config: configs.Config, num_classes: int | list[int]):
     if isinstance(num_classes, int):
         # Simple flat baseline
         model = timm.create_model(config.model.name, num_classes=num_classes)
@@ -31,28 +31,10 @@ def build_composer_model(config: configs.Config, num_classes: int | list[int]):
             raise NotImplementedError(
                 "don't how to apply hierarchical multitask head to model!"
             )
-
     else:
         raise TypeError(
             f"num_classes must be int or (int, int ...), not {type(num_classes)}"
         )
-
-    # Specify model initialization
-    def weight_init(w: torch.nn.Module):
-        if isinstance(w, torch.nn.Linear) or isinstance(w, torch.nn.Conv2d):
-            torch.nn.init.kaiming_normal_(w.weight)
-        if isinstance(w, torch.nn.BatchNorm2d):
-            w.weight.data = torch.rand(w.weight.data.shape)
-            w.bias.data = torch.zeros_like(w.bias.data)
-        # When using binary cross entropy, set the classification layer bias to
-        # -log(num_classes) to ensure the initial probabilities are approximately
-        # 1 / num_classes
-        if config.model.loss_name == "binary_cross_entropy" and isinstance(
-            w, torch.nn.Linear
-        ):
-            w.bias.data = torch.ones(w.bias.shape) * -torch.log(
-                torch.tensor(w.bias.shape[0])
-            )
 
     model.apply(weight_init)
 
@@ -81,12 +63,10 @@ def build_composer_model(config: configs.Config, num_classes: int | list[int]):
         loss_fn = hierarchy.MultitaskCrossEntropy(
             coeffs=config.hierarchy.multitask_coeffs
         )
-    elif config.model.loss_name == "cross_entropy":
+    elif config.hierarchy.variant == "":
         loss_fn = composer.loss.soft_cross_entropy
-    elif config.model.loss_name == "binary_cross_entropy":
-        loss_fn = composer.loss.binary_cross_entropy_with_logits
     else:
-        raise ValueError(config.model.loss_name, config.hierarchy.variant)
+        raise ValueError(config.hierarchy.variant)
 
     return Model(
         model, train_metrics=train_metrics, val_metrics=val_metrics, loss_fn=loss_fn
@@ -125,3 +105,11 @@ class Model(composer.ComposerModel):
     def forward(self, batch):
         inputs, _ = batch
         return self.module(inputs)
+
+
+def weight_init(w: torch.nn.Module):
+    if isinstance(w, torch.nn.Linear) or isinstance(w, torch.nn.Conv2d):
+        torch.nn.init.kaiming_normal_(w.weight)
+    if isinstance(w, torch.nn.BatchNorm2d):
+        w.weight.data = torch.rand(w.weight.data.shape)
+        w.bias.data = torch.zeros_like(w.bias.data)
