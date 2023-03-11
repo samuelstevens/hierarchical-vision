@@ -73,23 +73,14 @@ class WandBLogger(composer.loggers.WandBLogger):
 
 
 def smooth_labels(logits: Tensor, target: Tensor, smoothing: float = 0.1):
+    """Copied from MosaicML's composer library"""
     target = composer.loss.utils.ensure_targets_one_hot(logits, target)
     n_classes = logits.shape[1]
     return (target * (1.0 - smoothing)) + (smoothing / n_classes)
 
 
-class LabelSmoothing(composer.Algorithm):
-    """
-    Patched version of label smoothing that supports hierarhical multitask outputs.
-    """
-
-    def __init__(self, smoothing: float = 0.1, target_key=1):
-        self.smoothing = smoothing
-        self.original_labels = Tensor()
-        self.target_key = target_key
-
-    def match(self, event, state) -> bool:
-        return event in (composer.Event.BEFORE_LOSS, composer.Event.AFTER_LOSS)
+class LabelSmoothing(composer.algorithms.LabelSmoothing):
+    """Patched label smoothing that supports hierarchical multitask outputs."""
 
     def apply(self, event, state, logger):
         if event == composer.Event.BEFORE_LOSS:

@@ -1,14 +1,14 @@
 import composer
-from omegaconf import DictConfig, OmegaConf
-
 import wandb
+from omegaconf import DictConfig, OmegaConf
 
 
 def log_config(cfg: DictConfig):
     print(OmegaConf.to_yaml(cfg))
-    if "wandb" in cfg.get("loggers", {}):
-        if wandb.run:
-            wandb.config.update(OmegaConf.to_container(cfg, resolve=True))
+    if not wandb.run:
+        raise RuntimeError("initialize the wandb.run first!")
+
+    wandb.config.update(OmegaConf.to_container(cfg, resolve=True))
 
 
 def load_config(filepath: str):

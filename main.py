@@ -26,6 +26,10 @@ import monkey_patch
 import optim
 import utils
 
+device = "gpu" if torch.cuda.is_available() else "cpu"
+# Mixed precision for fast training when using a GPU
+precision = "amp" if device == "gpu" else "fp32"
+
 
 def main(config):
     reproducibility.seed_all(config.seed)
@@ -34,81 +38,58 @@ def main(config):
             'grad_accum="auto" requires training with a GPU; please specify grad_accum as an integer'
         )
 
-    # Divide batch sizes by number of devices if running multi-gpu training
+    # Divide global batch size by device count if running multi-gpu training
     local_train_batch_size = config.train_dataset.global_batch_size
     local_eval_batch_size = config.eval_dataset.global_batch_size
     if dist.get_world_size():
         local_train_batch_size //= dist.get_world_size()
         local_eval_batch_size //= dist.get_world_size()
 
-    # Train dataset
-    print("Building train dataloader")
     train_dataspec, num_classes = data.build_dataspec(
         config, local_batch_size=local_train_batch_size, is_train=True
     )
-    print("Built train dataloader\n")
 
-    # Validation dataset
-    print("Building evaluation dataloader")
     eval_dataspec, _ = data.build_dataspec(
         config, local_batch_size=local_eval_batch_size, is_train=False
     )
-    print("Built evaluation dataloader\n")
 
     # Checkpointing stuff
-    # -------------------
     save_folder = os.path.join(config.save.root, config.run_name)
     checkpoint_saver = CheckpointSaver(
         folder=os.path.join(save_folder, "checkpoints"),
         overwrite=True,
         num_checkpoints_to_keep=config.save.num_checkpoints_to_keep,
-        save_interval=config.save.interval,
+        save_interval=(config.save.interval or utils.save_last_only),
         remote_file_name="{run_name}-ep{epoch}-rank{rank}",
     )
     loggers = [
         monkey_patch.WandBLogger(
-            entity="imageomics",
-            project="hierarchical-vision",
-            log_artifacts=True,
+            entity=config.wandb.entity,
+            project=config.wandb.project,
+            log_artifacts=config.save.wandb,
             rank_zero_only=True,
-            init_kwargs={"dir": save_folder},
         ),
         FileLogger(
             filename=os.path.join(save_folder, "logs", "log{rank}.txt"), overwrite=True
         ),
     ]
 
-    # Model
-    # -----
-    print("Building Composer model")
     composer_model = models.build_model(config, num_classes)
-    print("Built Composer model\n")
 
-    # Optimizer
-    # ---------
-    print("Building optimizer and learning rate scheduler")
     optimizer = optim.build_optimizer(config, composer_model)
 
     # Learning rate scheduler: LR warmup then cosine decay for the rest of training
     lr_scheduler = composer.optim.CosineAnnealingWithWarmupScheduler(
         t_warmup=config.scheduler.t_warmup, alpha_f=config.scheduler.alpha_f
     )
-    print("Built optimizer and learning rate scheduler\n")
 
-    # Callbacks for logging
-    print("Building monitoring callbacks.")
     # Measures throughput as samples/sec and tracks total training time
     speed_monitor = SpeedMonitor(window_size=50)
-    lr_monitor = LRMonitor()  # Logs the learning rate
-    memory_monitor = MemoryMonitor()  # Logs memory utilization
+    # Logs the learning rate
+    lr_monitor = LRMonitor()
+    # Logs memory utilization
+    memory_monitor = MemoryMonitor()
 
-    # Callback for checkpointing
-    print("Built monitoring callbacks\n")
-
-    # Recipes for training ResNet architectures on ImageNet in order of increasing
-    # training time and accuracy. To learn about individual methods, check out "Methods
-    # Overview" in our documentation: https://docs.mosaicml.com/
-    print("Building algorithm recipes")
     algorithms = []
 
     if config.model.pretrained_checkpoint:
@@ -121,38 +102,12 @@ def main(config):
         )
 
     for algorithm in config.algorithms:
+        # We override some versions of the algorithms
         if algorithm.cls in monkey_patch.patched_algorithms:
             cls = getattr(monkey_patch, algorithm.cls)
         else:
             cls = getattr(composer.algorithms, algorithm.cls)
         algorithms.append(cls(**algorithm.args))
-    print("Built algorithm recipes\n")
-
-    save_folder = os.path.join(config.save.root, config.run_name)
-    checkpoint_saver = CheckpointSaver(
-        folder=os.path.join(save_folder, "checkpoints"),
-        overwrite=True,
-        num_checkpoints_to_keep=config.save.num_checkpoints_to_keep,
-        save_interval=(config.save.interval or utils.save_last_only),
-    )
-    loggers = [
-        monkey_patch.WandBLogger(
-            entity="imageomics",
-            project="hierarchical-vision",
-            log_artifacts=config.save.wandb,
-            rank_zero_only=True,
-            init_kwargs={"dir": save_folder},
-        ),
-        FileLogger(
-            filename=os.path.join(save_folder, "logs", "log{rank}.txt"), overwrite=True
-        ),
-    ]
-
-    # Create the Trainer!
-    print("Building Trainer")
-    device = "gpu" if torch.cuda.is_available() else "cpu"
-    # Mixed precision for fast training when using a GPU
-    precision = "amp" if device == "gpu" else "fp32"
 
     trainer = composer.Trainer(
         run_name=config.run_name,
@@ -174,26 +129,19 @@ def main(config):
         grad_accum=config.grad_accum,
         seed=config.seed,
     )
-    print("Built Trainer\n")
 
     print("Logging config:\n")
     utils.log_config(config)
 
-    print("Run evaluation")
     trainer.eval()
     if config.is_train:
-        print("Train!")
         trainer.fit()
 
 
-def parse_args():
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     utils.add_exp_args(parser)
-    return parser.parse_args()
-
-
-if __name__ == "__main__":
-    args = parse_args()
+    args = parser.parse_args()
 
     default_config = OmegaConf.structured(configs.Config)
     base_config = utils.load_config(args.base)
