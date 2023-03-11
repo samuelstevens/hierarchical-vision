@@ -1,14 +1,13 @@
 import composer
 import wandb
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import OmegaConf
 
 
-def log_config(cfg: DictConfig):
-    print(OmegaConf.to_yaml(cfg))
-    if not wandb.run:
-        raise RuntimeError("initialize the wandb.run first!")
-
-    wandb.config.update(OmegaConf.to_container(cfg, resolve=True))
+def log_config(config):
+    print(OmegaConf.to_yaml(config))
+    # Only log on the master process (which will have a wandb.run variable).
+    if wandb.run:
+        wandb.config.update(OmegaConf.to_container(config, resolve=True))
 
 
 def load_config(filepath: str):

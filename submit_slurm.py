@@ -22,7 +22,10 @@ def parse_args():
         help="Directory with configs. Submit a slurm job for each file in this directroy as the --exp option",
     )
     parser.add_argument(
-        "--submit", help="whether to actually submit the jobs", action="store_true"
+        "--submit", help="Whether to actually submit the jobs", action="store_true"
+    )
+    parser.add_argument(
+        "--limit", help="How many jobs to submit.", default=0, type=int
     )
     return parser.parse_args()
 
@@ -91,7 +94,9 @@ def main():
     machine_file = get_config_file(args.machine)
     extra_files = [get_config_file(e) for e in args.extra]
 
-    for exp_file in get_exp_files(args.exp, args.exp_dir):
+    for i, exp_file in enumerate(get_exp_files(args.exp, args.exp_dir)):
+        if args.limit > 0 and i >= args.limit:
+            break
         submit_job(base_file, machine_file, extra_files, exp_file, dry_run)
 
 

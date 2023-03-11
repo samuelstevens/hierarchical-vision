@@ -2,6 +2,7 @@ import os
 import pathlib
 import re
 import warnings
+import wandb
 
 import composer
 from torch import Tensor
@@ -23,11 +24,9 @@ class WandBLogger(composer.loggers.WandBLogger):
         if not self._enabled or not self._log_artifacts:
             return
 
-        import wandb
 
         # Some WandB-specific alias extraction
-        timestamp = state.timestamp
-        aliases = ["latest", f"ep{int(timestamp.epoch)}-ba{int(timestamp.batch)}"]
+        aliases = ["latest", f"ep{int(state.timestamp.epoch)}-ba{int(state.timestamp.batch)}"]
 
         # replace all unsupported characters with periods
         # Only alpha-numeric, periods, hyphens, and underscores are supported by wandb.
