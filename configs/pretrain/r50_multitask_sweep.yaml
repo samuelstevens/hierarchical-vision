@@ -1,4 +1,4 @@
-run_name: r50_multitask_hyperparam_sweep
+run_name: r50_pretrain_multitask_sweep
 
 optim:
   lr: { min: 1.0e-2, max: 3.0, scaling: log }

@@ -1,4 +1,4 @@
-run_name: r50_inat21_hyperparam_sweep
+run_name: r50_pretrain_cross_entropy_sweep
 
 optim:
   lr: { min: 0.5, max: 2.5, scaling: log }

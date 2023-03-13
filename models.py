@@ -10,7 +10,6 @@ from torchmetrics import Metric
 
 import configs
 import hierarchy
-import utils
 
 
 def build_model(config: configs.Config, num_classes: int | list[int]):
@@ -39,11 +38,6 @@ def build_model(config: configs.Config, num_classes: int | list[int]):
 
     model.apply(weight_init)
 
-    if config.model.pretrained_checkpoint:
-        utils.load_checkpoint_from_wandb(
-            model, config.model.pretrained_checkpoint, config.save.root
-        )
-
     if config.model.variant == "linear-probing":
         # TODO: don't hardcode 2048
         model = LinearProbe(model, 2048, num_classes)
@@ -65,6 +59,7 @@ def build_model(config: configs.Config, num_classes: int | list[int]):
         }
     else:
         train_metrics = {
+            "cross-entropy": CrossEntropy(),
             "acc@1": torchmetrics.Accuracy(task="multiclass", num_classes=num_classes),
             "acc@5": torchmetrics.Accuracy(
                 task="multiclass", num_classes=num_classes, top_k=5

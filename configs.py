@@ -17,19 +17,28 @@ class ModelConfig:
 
 @dataclass
 class DatasetConfig:
+    # Must be a key in config.local.datasets
     path: str = ""
     # Image resize size before crop. -1 means no resize.
     resize_size: int = -1
     crop_size: int = 224
     global_batch_size: int = 2048
 
+    drop_last: bool = False
+    shuffle: bool = False
+
     # iNat21 training dataset defaults
-    channel_mean: tuple[float, float, float] = field(
-        default_factory=lambda: (0.463, 0.480, 0.376)
-    )
-    channel_std: tuple[float, float, float] = field(
-        default_factory=lambda: (0.238, 0.229, 0.247)
-    )
+    channel_mean: tuple[float, float, float] = (0.463, 0.480, 0.376)
+    channel_std: tuple[float, float, float] = (0.238, 0.229, 0.247)
+
+
+@dataclass
+class MachineConfig:
+    # Lookup from dataset name to dataset location.
+    # Each dataset location has a train/ and val/ directory.
+    datasets: dict[str, str] = field(default_factory=dict)
+    # Where to save data.
+    save_root: str = "."
 
 
 @dataclass
@@ -49,7 +58,6 @@ class SchedulerConfig:
 
 @dataclass
 class SaveConfig:
-    root: str = "."
     interval: Optional[str] = "10ep"
     num_checkpoints_to_keep: int = 1
     overwrite: bool = True
@@ -83,21 +91,27 @@ class HierarchyConfig:
 
 @dataclass
 class Config:
-    run_name: str
+    run_name: str = "base"
     is_train: bool = True
     seed: int = 42
     max_duration: str = "90ep"
     grad_accum: str = "auto"
-
     load_path: Optional[str] = None
 
     hierarchy: HierarchyConfig = field(default_factory=HierarchyConfig)
 
     model: ModelConfig = field(default_factory=ModelConfig)
+
     train_dataset: DatasetConfig = field(default_factory=DatasetConfig)
     eval_dataset: DatasetConfig = field(default_factory=DatasetConfig)
+
     optim: OptimConfig = field(default_factory=OptimConfig)
     scheduler: SchedulerConfig = field(default_factory=SchedulerConfig)
+
     algorithms: list[AlgorithmConfig] = field(default_factory=list)
+
+    machine: MachineConfig = field(default_factory=MachineConfig)
+
     save: SaveConfig = field(default_factory=SaveConfig)
+
     wandb: WandbConfig = field(default_factory=WandbConfig)

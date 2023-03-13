@@ -2,5 +2,6 @@ einops
 mosaicml==0.13.1
 omegaconf
 preface
+scikit-learn
 timm
 wandb

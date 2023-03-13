@@ -1,0 +1,22 @@
+machine:
+  datasets:
+    inat21: /fs/scratch/PAS2136/hierarchical-vision/datasets/inat21/raw
+    # Random species split
+    rand-species-pretrain: /fs/scratch/PAS2136/hierarchical-vision/datasets/inat21/rand-species-split/pretrain
+    rand-species-downstream: /fs/scratch/PAS2136/hierarchical-vision/datasets/inat21/rand-species-split/downstream
+    rand-species-downstream-1shot: /fs/scratch/PAS2136/hierarchical-vision/datasets/inat21/rand-species-split/downstream-1shot
+    rand-species-downstream-5shot: /fs/scratch/PAS2136/hierarchical-vision/datasets/inat21/rand-species-split/downstream-5shot
+    rand-species-downstream-10shot: /fs/scratch/PAS2136/hierarchical-vision/datasets/inat21/rand-species-split/downstream-10shot
+    # Random genus split
+    rand-genus-pretrain: /fs/scratch/PAS2136/hierarchical-vision/datasets/inat21/rand-genus-split/pretrain
+    rand-genus-downstream: /fs/scratch/PAS2136/hierarchical-vision/datasets/inat21/rand-genus-split/downstream
+    rand-genus-downstream-1shot: /fs/scratch/PAS2136/hierarchical-vision/datasets/inat21/rand-genus-split/downstream-1shot
+    rand-genus-downstream-5shot: /fs/scratch/PAS2136/hierarchical-vision/datasets/inat21/rand-genus-split/downstream-5shot
+    rand-genus-downstream-10shot: /fs/scratch/PAS2136/hierarchical-vision/datasets/inat21/rand-genus-split/downstream-10shot
+    # Random subtree split
+    rand-subtree-pretrain: /fs/scratch/PAS2136/hierarchical-vision/datasets/inat21/rand-subtree-split/pretrain
+    rand-subtree-downstream: /fs/scratch/PAS2136/hierarchical-vision/datasets/inat21/rand-subtree-split/downstream
+    rand-subtree-downstream-1shot: /fs/scratch/PAS2136/hierarchical-vision/datasets/inat21/rand-subtree-split/downstream-1shot
+    rand-subtree-downstream-5shot: /fs/scratch/PAS2136/hierarchical-vision/datasets/inat21/rand-subtree-split/downstream-5shot
+    rand-subtree-downstream-10shot: /fs/scratch/PAS2136/hierarchical-vision/datasets/inat21/rand-subtree-split/downstream-10shot
+  save_root: /fs/scratch/PAS2136/hierarchical-vision/models

@@ -1,0 +1,14 @@
+train_dataset:
+  # Image resize size before crop, -1 means no resize
+  resize_size: -1
+  crop_size: 224
+  global_batch_size: 2048
+
+  drop_last: true
+  shuffle: true
+
+eval_dataset:
+  # Image resize size before crop
+  resize_size: 256
+  crop_size: 224
+  global_batch_size: 2048

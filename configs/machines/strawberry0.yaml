@@ -1,0 +1,23 @@
+machine:
+  datasets:
+    inat21: /local/scratch/cv_datasets/inat21/raw/
+    # Random species split
+    rand-species-pretrain: /local/scratch/cv_datasets/inat21/rand-species-split/pretrain
+    rand-species-downstream: /local/scratch/cv_datasets/inat21/rand-species-split/downstream
+    rand-species-downstream-1shot: /local/scratch/cv_datasets/inat21/rand-species-split/downstream-1shot
+    rand-species-downstream-5shot: /local/scratch/cv_datasets/inat21/rand-species-split/downstream-5shot
+    rand-species-downstream-10shot: /local/scratch/cv_datasets/inat21/rand-species-split/downstream-10shot
+    # Random genus split
+    rand-genus-pretrain: /local/scratch/cv_datasets/inat21/rand-genus-split/pretrain
+    rand-genus-downstream: /local/scratch/cv_datasets/inat21/rand-genus-split/downstream
+    rand-genus-downstream-1shot: /local/scratch/cv_datasets/inat21/rand-genus-split/downstream-1shot
+    rand-genus-downstream-5shot: /local/scratch/cv_datasets/inat21/rand-genus-split/downstream-5shot
+    rand-genus-downstream-10shot: /local/scratch/cv_datasets/inat21/rand-genus-split/downstream-10shot
+    # Random subtree split
+    rand-subtree-pretrain: /local/scratch/cv_datasets/inat21/rand-subtree-split/pretrain
+    rand-subtree-downstream: /local/scratch/cv_datasets/inat21/rand-subtree-split/downstream
+    rand-subtree-downstream-1shot: /local/scratch/cv_datasets/inat21/rand-subtree-split/downstream-1shot
+    rand-subtree-downstream-5shot: /local/scratch/cv_datasets/inat21/rand-subtree-split/downstream-5shot
+    rand-subtree-downstream-10shot: /local/scratch/cv_datasets/inat21/rand-subtree-split/downstream-10shot
+
+  save_root: /local/scratch/stevens.994/hierarchical-vision

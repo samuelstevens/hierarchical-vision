@@ -1,5 +1,0 @@
-run_name: r50_inat21_multitask
-
-hierarchy:
-  variant: multitask
-  multitask_coeffs: [ 8, 5.65, 4, 2.82, 2, 1.41, 1 ]

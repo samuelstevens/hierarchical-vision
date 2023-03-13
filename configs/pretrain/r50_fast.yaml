@@ -1,5 +1,9 @@
-run_name: r50_inat21_fast
+run_name: r50_fast
 max_duration: 36ep
+
+model:
+  name: resnet50
+  variant: full-tuning
 
 algorithms:
   - cls: BlurPool

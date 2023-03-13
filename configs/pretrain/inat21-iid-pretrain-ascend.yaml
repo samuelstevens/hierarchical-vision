@@ -1,9 +1,0 @@
-train_dataset:
-  path: /fs/scratch/PAS2136/hierarchical-vision/datasets/inat21/iid-split/pretrain/
-
-eval_dataset:
-  path: /fs/scratch/PAS2136/hierarchical-vision/datasets/inat21/iid-split/pretrain/
-
-save:
-  root: /fs/scratch/PAS2136/hierarchical-vision/models
-  interval:

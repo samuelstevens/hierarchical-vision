@@ -88,13 +88,9 @@ def build_dataspec(
     if is_train:
         split = "train"
         data_cfg = config.train_dataset
-        drop_last = True
-        shuffle = True
     else:
         split = "val"
         data_cfg = config.eval_dataset
-        drop_last = False
-        shuffle = False
 
     # Transforms
     # ----------
@@ -115,7 +111,7 @@ def build_dataspec(
 
     transform = transforms.Compose(transform)
 
-    # Scale by 255 since the collate `pil_image_collate` results in images in range 0-255.
+    # Scale by 255 since `pil_image_collate` results in images in range 0-255.
     # If we use ToTensor() and the default collate, remove the scaling
     if all(m < 1 for m in data_cfg.channel_mean):
         channel_mean = [m * 255 for m in data_cfg.channel_mean]
@@ -130,8 +126,11 @@ def build_dataspec(
     else:
         dataset_cls = ImageFolder
 
-    dataset = dataset_cls(os.path.join(data_cfg.path, split), transform)
-    sampler = dist.get_sampler(dataset, drop_last=drop_last, shuffle=shuffle)
+    path = config.machine.datasets[data_cfg.path]
+    dataset = dataset_cls(os.path.join(path, split), transform)
+    sampler = dist.get_sampler(
+        dataset, drop_last=data_cfg.drop_last, shuffle=data_cfg.shuffle
+    )
 
     # DataSpec
     # --------
@@ -141,7 +140,7 @@ def build_dataspec(
             dataset=dataset,
             batch_size=local_batch_size,
             sampler=sampler,
-            drop_last=drop_last,
+            drop_last=data_cfg.drop_last,
             **default_dataloader_kwargs,
             **dataloader_kwargs,
         ),

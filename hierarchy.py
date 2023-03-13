@@ -1,3 +1,5 @@
+import collections
+import dataclasses
 import os
 
 import composer.metrics
@@ -105,7 +107,8 @@ class FineGrainedAccuracy(torchmetrics.Metric):
         preds = fine_grained_predictions(outputs, topk=self.topk).squeeze()
         target = target[:, -1].squeeze()
 
-        assert preds.shape == target.shape
+        breakpoint()
+        # Look at the code in accuracy() in src/hierarchical.py in swin-transformer
 
         self.correct += torch.sum(preds == target)
         self.total += target.numel()
@@ -155,7 +158,7 @@ class HierarchicalImageFolder(torchvision.datasets.ImageFolder):
         class_to_idxs = {}
 
         for cls in classes:
-            tiers = make_hierarchical(cls)
+            tiers = HierarchicalLabel.parse(cls).cleaned
 
             for tier, value in enumerate(tiers):
                 if tier not in tier_lookup:
@@ -174,26 +177,116 @@ class HierarchicalImageFolder(torchvision.datasets.ImageFolder):
         return classes, class_to_idxs
 
 
-def make_hierarchical(name):
-    """
-    Sometimes the tree is not really a tree; that is, sometimes there are
-    repeated orders, for example.
+@dataclasses.dataclass(frozen=True)
+class HierarchicalLabel:
+    raw: str
+    number: int
+    kingdom: str
+    phylum: str
+    cls: str
+    order: str
+    family: str
+    genus: str
+    species: str
 
-    Arguments:
-        name (str): the complete taxonomic name, separated by '_'
-    """
-    # index is a number
-    # top is kingdom
-    index, top, *tiers = name.split("_")
+    @classmethod
+    def parse(cls, name):
+        """
+        Sometimes the tree is not really a tree. For example, sometimes there are repeated orders.
+        This function fixes that by repeating the upper tier names in the lower tier names.
 
-    cleaned = [top]
+        Suppose we only had order-level classification. This would be the class for a bald eagle's
+        order:
 
-    complete = top
-    for tier in tiers:
-        complete += f"-{tier}"
-        cleaned.append(complete)
+        00001_animalia_chordata_aves_accipitriformes
 
-    return cleaned
+        Suppose then that we had a another class:
+
+        00002_animalia_chordata_reptilia_accipitriformes
+
+        These accipitriformes refer to different nodes in the tree. To fix this, we do:
+
+        00001_animalia_chordata_aves_accipitriformes ->
+            00001, animalia, animalia-chordata, animalia-chordata-aves, animalia-chordata-aves-accipitriformes
+
+        00002_animalia_chordata_reptilia_accipitriformes ->
+            00002, animalia, animalia-chordata, animalia-chordata-reptilia, animalia-chordata-reptilia-accipitriformes
+
+        Now each bit of text refers to the same nodes.
+        It's not pretty but it does get the job done.
+
+        Arguments:
+            name (str): the complete taxonomic name, separated by '_'
+        """
+
+        # index is a number
+        # top is kingdom
+        index, top, *tiers = name.split("_")
+        number = int(index)
+
+        cleaned = [top]
+
+        complete = top
+        for tier in tiers:
+            complete += f"-{tier}"
+            cleaned.append(complete)
+
+        assert len(cleaned) == 7, f"{len(cleaned)} != 7"
+
+        return cls(name, number, *cleaned)
+
+    @property
+    def cleaned(self):
+        return "_".join(
+            [
+                str(self.number).rjust(5, 0),
+                self.kingdom,
+                self.phylum,
+                self.cls,
+                self.order,
+                self.family,
+                self.genus,
+                self.species,
+            ]
+        )
+
+
+class LeafCountLookup:
+    def __init__(self, labels: list[HierarchicalLabel]):
+        self._lookup = collections.defaultdict(int)
+        for label in labels:
+            self._lookup[(label.kingdom, "kingdom")] += 1
+            self._lookup[(label.phylum, "phylum")] += 1
+            self._lookup[(label.cls, "cls")] += 1
+            self._lookup[(label.order, "order")] += 1
+            self._lookup[(label.family, "family")] += 1
+            self._lookup[(label.genus, "genus")] += 1
+            self._lookup[(label.species, "species")] += 1
+        self.total = len(labels)
+
+    def closest(self, n: int | float) -> tuple[str, str, int]:
+        """
+        Return the label and the level that has the closest count.
+        If n is a float, find the count that is closest to n * self.total.
+            (the float must be between 0 and 1)
+
+        If n is an int, find the count that is closest n.
+        """
+        if isinstance(n, float):
+            assert 0 <= n <= 1, "n must be fractional"
+            n = int(self.total * n)
+        assert isinstance(n, int)
+
+        closest, dist = None, float("inf")
+
+        for label, count in self._lookup.items():
+            if abs(count - n) < dist:
+                closest, dist = (*label, count), abs(count - n)
+
+        if closest is None:
+            raise RuntimeError("no values in lookup!")
+
+        return closest
 
 
 def fine_grained_predictions(output, topk=1, hierarchy_level=-1):

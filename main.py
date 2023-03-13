@@ -58,7 +58,7 @@ def main(config):
         wandb.init(name=config.run_name)
 
     # Checkpointing stuff
-    save_folder = os.path.join(config.save.root, config.run_name)
+    save_folder = os.path.join(config.machine.save_root, config.run_name)
     checkpoint_saver = CheckpointSaver(
         folder=os.path.join(save_folder, "checkpoints"),
         filename="ep{epoch}.pt",
@@ -125,6 +125,7 @@ def main(config):
         precision=precision,
         grad_accum=config.grad_accum,
         seed=config.seed,
+        algorithm_passes=[monkey_patch.PretrainedBackbone.get_algorithm_pass()],
     )
 
     print("Logging config:\n")
@@ -141,16 +142,12 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     default_config = OmegaConf.structured(configs.Config)
-    base_config = utils.load_config(args.base)
     machine_config = utils.load_config(args.machine)
-    extra_configs = [utils.load_config(file) for file in args.extra]
-    exp_config = utils.load_config(args.exp)
+    exp_configs = [utils.load_config(file) for file in args.exp]
 
     config = OmegaConf.merge(
         default_config,
-        base_config,
         machine_config,
-        *extra_configs,
-        exp_config,
+        *exp_configs,
     )
     main(config)
