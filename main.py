@@ -66,7 +66,6 @@ def main(config):
         num_checkpoints_to_keep=config.save.num_checkpoints_to_keep,
         save_interval=(config.save.interval or utils.save_last_only),
         remote_file_name="{run_name}.pt",
-        latest_remote_file_name="{run_name}.latest",
     )
     loggers = [
         monkey_patch.WandBLogger(
