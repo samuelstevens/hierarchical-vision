@@ -8,5 +8,5 @@ eval_dataset:
   path: rand-genus-pretrain
 
   # Use the same as training.
-  csannel_mean: [ 0.4632, 0.4798, 0.3743 ]
+  channel_mean: [ 0.4632, 0.4798, 0.3743 ]
   channel_std: [ 0.2344, 0.2256, 0.2439 ]
