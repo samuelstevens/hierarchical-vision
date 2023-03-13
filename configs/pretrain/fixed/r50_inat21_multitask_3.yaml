@@ -1,0 +1,17 @@
+run_name: r50_inat21_multitask
+seed: 0
+
+hierarchy:
+  variant: multitask
+  multitask_coeffs: [ 8, 5.65, 4, 2.82, 2, 1.41, 1 ]
+
+optim:
+  lr: 0.90
+  momentum: 0.90
+  weight_decay: 1.5e-3
+
+save:
+  interval:
+  num_checkpoints_to_keep: 1
+  overwrite: true
+  wandb: true
