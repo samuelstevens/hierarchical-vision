@@ -239,7 +239,7 @@ class HierarchicalLabel:
     def cleaned(self):
         return "_".join(
             [
-                str(self.number).rjust(5, 0),
+                str(self.number).rjust(5, '0'),
                 self.kingdom,
                 self.phylum,
                 self.cls,

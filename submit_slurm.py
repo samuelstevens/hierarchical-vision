@@ -28,22 +28,25 @@ def parse_args():
     return parser.parse_args()
 
 
-def submit_job(base_file, machine_file, extra_files, exp_file, dry_run):
-    with open(exp_file) as fd:
+def submit_job(machine_file, exp_files, dry_run):
+    if not exp_files:
+        raise ValueError("need at least one experiment file")
+
+    with open(exp_files[-1]) as fd:
         job_name = yaml.load(fd, Loader=yaml.FullLoader).pop("run_name")
-
-    os.environ["BASE_CONFIG_FILE"] = base_file
-    os.environ["MACHINE_CONFIG_FILE"] = machine_file
-    os.environ["EXTRA_CONFIG_FILES"] = (
-        " ".join(extra_files) if extra_files else exp_file
-    )
-    os.environ["EXP_CONFIG_FILE"] = exp_file
-
+    
+    environ = {
+        "MACHINE_CONFIG_FILE": machine_file,
+        "EXP_CONFIG_FILES": " ".join(exp_files) ,
+    }
+    
+    for key, value in environ.items():
+        os.environ[key] = value
+    
     command = [
         "sbatch",
         f"--output={log_dir}/%j-{job_name}.txt",
         f"--job-name={job_name}",
-        # f"--export=BASE_CONFIG_FILE={base_file},MACHINE_CONFIG_FILE={machine_file},EXP_CONFIG_FILE={exp_file},EXTRA_CONFIG_FILES=",
         job_file,
     ]
 
@@ -88,14 +91,19 @@ def main():
 
     dry_run = not args.submit
 
-    base_file = get_config_file(args.base)
     machine_file = get_config_file(args.machine)
-    extra_files = [get_config_file(e) for e in args.extra]
+    exp_files = [get_config_file(e) for e in args.exp]
 
-    for i, exp_file in enumerate(get_exp_files(args.exp, args.exp_dir)):
-        if args.limit > 0 and i >= args.limit:
-            break
-        submit_job(base_file, machine_file, extra_files, exp_file, dry_run)
+    if args.exp_dir:
+        submitted = 0
+        for exp_file in get_exp_files(args.exp_dir):
+            submit_job(machine_file, exp_files + [exp_file], dry_run)
+            submitted += 1
+
+            if args.limit > 0 and submitted >= args.limit:
+                break
+    else:
+        submit_job(machine_file, exp_files, dry_run)
 
 
 if __name__ == "__main__":
