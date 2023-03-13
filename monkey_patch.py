@@ -174,7 +174,8 @@ class PretrainedBackbone(composer.Algorithm):
         # This ensures that the blurpool algorithm runs first.
         # Then we won't have missing keys.
         def sort(algorithms, event):
-            return composer.core.passes.sort_to_back(algorithms, cls)
+            # This actually makes the PretrainedBackbone algorithm run *last*.
+            return composer.core.passes.sort_to_front(algorithms, cls)
 
         return sort
 
@@ -182,25 +183,37 @@ class PretrainedBackbone(composer.Algorithm):
         return event == composer.Event.INIT
 
     def apply(self, event, state, logger):
-        missing, unexpected = self._load_pretrained_backbone(state.model.module)
-        if missing:
-            log.warn(f"Missing keys in checkpoint: {', '.join(missing)}")
-        if unexpected:
-            log.warn(f"Unexpected keys in checkpoint: {', '.join(unexpected)}")
+        self.load_pretrained_backbone(
+            self.checkpoint, state.model.module, self.local_cache, self.strict
+        )
 
-    def _load_pretrained_backbone(self, model_with_backbone):
+    @staticmethod
+    def load_pretrained_backbone(checkpoint, model_with_backbone, local_cache, strict):
         assert hasattr(model_with_backbone, "backbone")
 
         downloaded_filepath = (
-            wandb.run.use_artifact(self.checkpoint.url)
-            .get_path(self.checkpoint.filepath)
-            .download(root=self.local_cache)
+            wandb.run.use_artifact(checkpoint.url)
+            .get_path(checkpoint.filepath)
+            .download(root=local_cache)
         )
         state_dict = torch.load(downloaded_filepath, map_location="cpu")["state"]
         torch.nn.modules.utils.consume_prefix_in_state_dict_if_present(
             state_dict["model"], "module."
         )
+        # Delete the linear head keys
+        head_keys = {
+            key for key in state_dict["model"].keys() if "fc." in key or "head." in key
+        }
+        for key in head_keys:
+            del state_dict["model"][key]
+
         missing, unexpected = model_with_backbone.backbone.load_state_dict(
-            state_dict["model"], strict=self.strict
+            state_dict["model"], strict=strict
         )
-        return missing, unexpected
+        # Don't worry about missing the head keys.
+        missing = [key for key in missing if key not in head_keys] 
+
+        if missing:
+            log.warn(f"Missing keys in checkpoint: {', '.join(missing)}")
+        if unexpected:
+            log.warn(f"Unexpected keys in checkpoint: {', '.join(unexpected)}")

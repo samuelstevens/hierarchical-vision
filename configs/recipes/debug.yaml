@@ -1,6 +1,0 @@
-run_name: r50_debug
-max_duration: 1ba
-is_train: true
-
-algorithms:
-  - cls: ChannelsLast

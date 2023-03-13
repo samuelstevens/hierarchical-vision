@@ -1,0 +1,6 @@
+run_name: r50_debug
+max_duration: 1ba
+
+model:
+  name: resnet50
+  variant: full-tuning

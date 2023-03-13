@@ -79,7 +79,7 @@ def main(config):
         ),
     ]
 
-    composer_model = models.build_model(config, num_classes)
+    composer_model = models.build_composer_model(config, num_classes)
 
     optimizer = optim.build_optimizer(config, composer_model)
 
@@ -130,7 +130,7 @@ def main(config):
     print("Logging config:\n")
     utils.log_config(config)
 
-    # trainer.eval()
+    trainer.eval()
     if config.is_train:
         trainer.fit()
 

@@ -24,11 +24,11 @@ for split in species genus subtree
     for objective in cross_entropy multitask hxe
         composer main.py \
           --machine configs/machine/strawberry0.yaml \
-          --exps \
+          --exp \
             configs/pretrain/inat21.yaml \
             configs/pretrain/inat21_rand_$split.yaml \
             configs/pretrain/r50_fast.yaml \
-            configs/pretrain/fixed/r50_inat21_$objective.yaml
+            configs/pretrain/fixed/r50_pretrain_$objective.yaml
     done
 done
 ```
@@ -43,3 +43,13 @@ python -m tools.low_data_split --input /local/scratch/cv_datasets/inat21/rand-sp
 python -m tools.low_data_split --input /local/scratch/cv_datasets/inat21/rand-species-split/downstream/ --output /local/scratch/cv_datasets/inat21/rand-species-split/downstream-5shot --shots 5
 python -m tools.low_data_split --input /local/scratch/cv_datasets/inat21/rand-species-split/downstream/ --output /local/scratch/cv_datasets/inat21/rand-species-split/downstream-10shot --shots 10
 ```
+
+## Run Low Data Experiments
+
+```py
+composer main.py \
+  --machine configs/machine/strawberry0.yaml \
+  --exp \
+    configs/downstream/rand_species_10shot.yaml \
+    configs/linear_probe/r50_base.yaml \
+    configs/linear_probe/r50_rand_species_cross_entropy.yaml

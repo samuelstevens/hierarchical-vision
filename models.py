@@ -43,8 +43,16 @@ def build_model(config: configs.Config, num_classes: int | list[int]):
         model = LinearProbe(model, 2048, num_classes)
     elif config.model.variant == "full-tuning":
         pass
+    elif config.model.variant == "simpleshot":
+        model = FeatureOnlyModel(model)
     else:
         raise ValueError(config.model.variant)
+
+    return model
+
+
+def build_composer_model(config: configs.Config, num_classes: int | list[int]):
+    model = build_model(config, num_classes)
 
     # Metrics
     # -------
@@ -58,6 +66,8 @@ def build_model(config: configs.Config, num_classes: int | list[int]):
             "acc@1": hierarchy.FineGrainedAccuracy(),
         }
     else:
+        assert isinstance(num_classes, int)
+
         train_metrics = {
             "cross-entropy": CrossEntropy(),
             "acc@1": torchmetrics.Accuracy(task="multiclass", num_classes=num_classes),
@@ -154,6 +164,28 @@ class LinearProbe(torch.nn.Module):
         logits = self.linear_layer(features)  # B x Classes
 
         return logits
+
+
+class FeatureOnlyModel(torch.nn.Module):
+    def __init__(self, backbone):
+        super().__init__()
+
+        self.backbone = backbone
+        self.backbone.eval()
+        self.backbone.requires_grad_(False)
+
+    def forward(self, x):
+        # Set to eval every step because we're not concerned with maximal throughput
+        # and I don't want to do a forward pass with batchnorm or dropout in train mode.
+        self.backbone.eval()
+
+        # forward_features doesn't do any pooling.
+        # forward_head with pre_logits=True doesn't do the resnet linear proj.
+        features = self.backbone.forward_head(
+            self.backbone.forward_features(x), pre_logits=True
+        )  # B x Features
+
+        return features
 
 
 def weight_init(w: torch.nn.Module):

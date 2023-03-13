@@ -1,4 +1,4 @@
-run_name: r50_inat21_cross_entropy
+run_name: r50_pretrain_cross_entropy
 seed: 0
 
 optim:

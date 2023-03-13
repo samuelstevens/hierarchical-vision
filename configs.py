@@ -7,8 +7,7 @@ Args = dict[str, Any]
 @dataclass
 class ModelConfig:
     name: str = "resnet50"
-    # Can be full-tuning or linear-probing
-    # Will include KNN in the future.
+    # Can be full-tuning, linear-probing or simpleshot
     variant: str = "full-tuning"
 
     # If it exists, load this checkpoint from wandb.

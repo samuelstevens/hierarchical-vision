@@ -1,4 +1,4 @@
-run_name: r50_inat21_multitask
+run_name: r50_pretrain_multitask
 seed: 0
 
 hierarchy:
