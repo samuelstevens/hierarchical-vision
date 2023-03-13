@@ -34,15 +34,15 @@ def submit_job(machine_file, exp_files, dry_run):
 
     with open(exp_files[-1]) as fd:
         job_name = yaml.load(fd, Loader=yaml.FullLoader).pop("run_name")
-    
+
     environ = {
         "MACHINE_CONFIG_FILE": machine_file,
-        "EXP_CONFIG_FILES": " ".join(exp_files) ,
+        "EXP_CONFIG_FILES": " ".join(exp_files),
     }
-    
+
     for key, value in environ.items():
         os.environ[key] = value
-    
+
     command = [
         "sbatch",
         f"--output={log_dir}/%j-{job_name}.txt",

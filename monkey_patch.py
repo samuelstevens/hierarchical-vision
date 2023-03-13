@@ -211,7 +211,7 @@ class PretrainedBackbone(composer.Algorithm):
             state_dict["model"], strict=strict
         )
         # Don't worry about missing the head keys.
-        missing = [key for key in missing if key not in head_keys] 
+        missing = [key for key in missing if key not in head_keys]
 
         if missing:
             log.warn(f"Missing keys in checkpoint: {', '.join(missing)}")
