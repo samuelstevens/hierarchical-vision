@@ -10,6 +10,7 @@ from torchmetrics import Metric
 
 import configs
 import hierarchy
+import utils
 
 
 def build_model(config: configs.Config, num_classes: int | list[int]):
@@ -38,21 +39,43 @@ def build_model(config: configs.Config, num_classes: int | list[int]):
 
     model.apply(weight_init)
 
+    if config.model.pretrained_checkpoint:
+        utils.load_checkpoint_from_wandb(
+            model, config.model.pretrained_checkpoint, config.save.root
+        )
+
+    if config.model.variant == "linear-probing":
+        # TODO: don't hardcode 2048
+        model = LinearProbe(model, 2048, num_classes)
+    elif config.model.variant == "full-tuning":
+        pass
+    else:
+        raise ValueError(config.model.variant)
+
     # Metrics
     # -------
     if config.hierarchy.variant == "multitask":
-        train_metrics = {"acc@1": hierarchy.FineGrainedAccuracy()}
+        train_metrics = {
+            "cross-entropy": hierarchy.FineGrainedCrossEntropy(),
+            "acc@1": hierarchy.FineGrainedAccuracy(),
+        }
         val_metrics = {
             "cross-entropy": hierarchy.FineGrainedCrossEntropy(),
             "acc@1": hierarchy.FineGrainedAccuracy(),
         }
     else:
         train_metrics = {
-            "acc@1": torchmetrics.Accuracy(task="multiclass", num_classes=num_classes)
+            "acc@1": torchmetrics.Accuracy(task="multiclass", num_classes=num_classes),
+            "acc@5": torchmetrics.Accuracy(
+                task="multiclass", num_classes=num_classes, top_k=5
+            ),
         }
         val_metrics = {
             "cross-entropy": CrossEntropy(),
             "acc@1": torchmetrics.Accuracy(task="multiclass", num_classes=num_classes),
+            "acc@5": torchmetrics.Accuracy(
+                task="multiclass", num_classes=num_classes, top_k=5
+            ),
         }
 
     # Loss Function
@@ -105,6 +128,37 @@ class Model(composer.ComposerModel):
     def forward(self, batch):
         inputs, _ = batch
         return self.module(inputs)
+
+
+class LinearProbe(torch.nn.Module):
+    def __init__(self, backbone, num_features, num_classes):
+        super().__init__()
+
+        self.backbone = backbone
+        self.num_features = num_features
+        self.num_classes = num_classes
+        self.linear_layer = torch.nn.Linear(
+            in_features=num_features, out_features=self.num_classes
+        )
+
+        self.backbone.eval()
+        # Freeze the backbone
+        self.backbone.requires_grad_(False)
+
+    def forward(self, x):
+        # Set to eval every step because we're not concerned with maximal throughput
+        # and I don't want to do a forward pass with batchnorm or dropout in train mode.
+        self.backbone.eval()
+
+        # forward_features doesn't do any pooling.
+        # forward_head with pre_logits=True doesn't do the resnet linear proj.
+        features = self.backbone.forward_head(
+            self.backbone.forward_features(x), pre_logits=True
+        )  # B x Features
+
+        logits = self.linear_layer(features)  # B x Classes
+
+        return logits
 
 
 def weight_init(w: torch.nn.Module):

@@ -24,9 +24,7 @@ def parse_args():
     parser.add_argument(
         "--submit", help="Whether to actually submit the jobs", action="store_true"
     )
-    parser.add_argument(
-        "--limit", help="How many jobs to submit.", default=0, type=int
-    )
+    parser.add_argument("--limit", help="How many jobs to submit.", default=0, type=int)
     return parser.parse_args()
 
 

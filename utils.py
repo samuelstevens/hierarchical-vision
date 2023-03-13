@@ -1,13 +1,19 @@
+import dataclasses
+import re
+
 import composer
-import wandb
+import torch
 from omegaconf import OmegaConf
+
+import wandb
 
 
 def log_config(config):
-    print(OmegaConf.to_yaml(config))
-    # Only log on the master process (which will have a wandb.run variable).
+    # Only update the config on the master process
+    # (which will have a wandb.run variable).
     if wandb.run:
         wandb.config.update(OmegaConf.to_container(config, resolve=True))
+    print(OmegaConf.to_yaml(config))
 
 
 def load_config(filepath: str):
@@ -42,25 +48,40 @@ def save_last_only(state: composer.State, event: composer.Event):
     return elapsed_duration >= 1.0
 
 
-class LoadFromWandB(composer.Algorithm):
-    def __init__(self, entity, project, checkpoint):
-        # TODO: this checkpoint thing needs to be much clearer.
-        # It interacts with the way wandb saves files.
-        self.wandb_path = f"{entity}/{project}/{checkpoint}"
-        self.filename = checkpoint
+@dataclasses.dataclass(frozen=True)
+class WandbCheckpoint:
+    source: str
+    url: str
+    filepath: str
 
-    def match(self, event, state):
-        return event == composer.Event.INIT
+    @classmethod
+    def parse(cls, uri):
+        match = re.match(r"^wandb://([\w./-]+:[\w./-]+)\?([\w./-]+)$", uri)
+        if not match:
+            raise ValueError(f"uri '{uri}' doesn't match pattern!")
 
-    def apply(self, event, state, logger):
-        if not wandb.run:
-            raise RuntimeError("Call wandb.init before this!")
+        return cls("wandb", *match.groups())
 
-        downloaded_filepath = (
-            wandb.run.use_artifact(self.path, type="model")
-            .get_path(self.filename)
-            .download()
-        )
-        composer.utils.load_checkpoint(
-            downloaded_filepath, state, logger, load_weights_only=True
-        )
+
+def load_checkpoint_from_wandb(model, checkpoint, local_cache, strict=False):
+    if isinstance(checkpoint, str):
+        checkpoint = WandbCheckpoint.parse(checkpoint)
+    elif isinstance(checkpoint, WandbCheckpoint):
+        pass
+    else:
+        raise TypeError(checkpoint)
+
+    downloaded_filepath = (
+        wandb.run.use_artifact(checkpoint.url)
+        .get_path(checkpoint.filepath)
+        .download(root=local_cache)
+    )
+    state_dict = torch.load(downloaded_filepath, map_location="cpu")["state"]
+    torch.nn.modules.utils.consume_prefix_in_state_dict_if_present(
+        state_dict["model"], "module."
+    )
+    missing, unexpected = model.load_state_dict(state_dict["model"], strict=strict)
+    if missing:
+        print(f"Missing keys in checkpoint: {', '.join(missing)}")
+    if unexpected:
+        print(f"Unexpected keys in checkpoint: {', '.join(unexpected)}")

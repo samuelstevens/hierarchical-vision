@@ -18,7 +18,7 @@ def build_optimizer(config, model):
         return torch.optim.SGD(
             parameters,
             momentum=config.optim.momentum,
-            nesterov=config.optim.nesterov,
+            nesterov=True,
             lr=config.optim.lr,
             weight_decay=config.optim.weight_decay,
         )
@@ -50,9 +50,6 @@ def set_weight_decay(model, skip_list=()):
     no_decay = []
 
     for name, param in model.named_parameters():
-        if not param.requires_grad:
-            continue  # frozen weights
-
         if len(param.shape) == 1 or name.endswith(".bias") or (name in skip_list):
             no_decay.append(param)
         else:

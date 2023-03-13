@@ -12,7 +12,7 @@ class ModelConfig:
     variant: str = "full-tuning"
 
     # If it exists, load this checkpoint from wandb.
-    pretrained_checkpoint: Optional[tuple[str, str]] = None
+    pretrained_checkpoint: Optional[str] = None
 
 
 @dataclass

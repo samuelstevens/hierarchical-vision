@@ -25,10 +25,11 @@ import models
 import monkey_patch
 import optim
 import utils
+import wandb
 
 device = "gpu" if torch.cuda.is_available() else "cpu"
-# Mixed precision for fast training when using a GPU
 precision = "amp" if device == "gpu" else "fp32"
+is_master = dist.get_global_rank() == 0
 
 
 def main(config):
@@ -53,14 +54,19 @@ def main(config):
         config, local_batch_size=local_eval_batch_size, is_train=False
     )
 
+    if is_master:
+        wandb.init(name=config.run_name)
+
     # Checkpointing stuff
     save_folder = os.path.join(config.save.root, config.run_name)
     checkpoint_saver = CheckpointSaver(
         folder=os.path.join(save_folder, "checkpoints"),
+        filename="ep{epoch}.pt",
         overwrite=True,
         num_checkpoints_to_keep=config.save.num_checkpoints_to_keep,
         save_interval=(config.save.interval or utils.save_last_only),
-        remote_file_name="{run_name}",
+        remote_file_name="{run_name}.pt",
+        latest_remote_file_name="{run_name}.latest",
     )
     loggers = [
         monkey_patch.WandBLogger(
@@ -91,15 +97,6 @@ def main(config):
     memory_monitor = MemoryMonitor()
 
     algorithms = []
-
-    if config.model.pretrained_checkpoint:
-        algorithms.append(
-            utils.LoadFromWandB(
-                config.wandb.entity,
-                config.wandb.project,
-                config.model.pretrained_checkpoint,
-            )
-        )
 
     for algorithm in config.algorithms:
         # We override some versions of the algorithms
@@ -133,7 +130,7 @@ def main(config):
     print("Logging config:\n")
     utils.log_config(config)
 
-    trainer.eval()
+    # trainer.eval()
     if config.is_train:
         trainer.fit()
 

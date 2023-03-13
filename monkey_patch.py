@@ -1,19 +1,41 @@
+import atexit
 import os
 import pathlib
 import re
 import warnings
-import wandb
 
 import composer
+from composer.utils import dist
 from torch import Tensor
+
+import wandb
 
 patched_algorithms = ("LabelSmoothing",)
 
 
 class WandBLogger(composer.loggers.WandBLogger):
+    def init(self, state, logger) -> None:
+        """
+        Assumes there is already a run initialized on the master process.
+        """
+        del logger  # unused
+
+        entity_and_project = [None, None]
+        if self._enabled:
+            assert wandb.run is not None
+            entity_and_project = [str(wandb.run.entity), str(wandb.run.project)]
+            self.run_dir = wandb.run.dir
+            atexit.register(self._set_is_in_atexit)
+
+        # Share the entity and project across all ranks, so they are available on ranks that did not initialize wandb
+        dist.broadcast_object_list(entity_and_project)
+        self.entity, self.project = entity_and_project
+        assert self.entity is not None, "entity should be defined"
+        assert self.project is not None, "project should be defined"
+
     def upload_file(
         self,
-        state: composer.State,
+        state,
         remote_file_name: str,
         file_path: pathlib.Path,
         *,
@@ -24,13 +46,23 @@ class WandBLogger(composer.loggers.WandBLogger):
         if not self._enabled or not self._log_artifacts:
             return
 
-
         # Some WandB-specific alias extraction
-        aliases = ["latest", f"ep{int(state.timestamp.epoch)}-ba{int(state.timestamp.batch)}"]
+        aliases = [
+            "latest",
+            f"ep{int(state.timestamp.epoch)}-ba{int(state.timestamp.batch)}",
+        ]
 
         # replace all unsupported characters with periods
         # Only alpha-numeric, periods, hyphens, and underscores are supported by wandb.
         new_remote_file_name = re.sub(r"[^a-zA-Z0-9-_\.]", ".", remote_file_name)
+        extension = new_remote_file_name.split(".")[-1]
+
+        if extension in ("txt", "symlink"):
+            return
+
+        if extension not in "pt":
+            print(extension, "stupid")
+
         if new_remote_file_name != remote_file_name:
             warnings.warn(
                 (
@@ -38,11 +70,6 @@ class WandBLogger(composer.loggers.WandBLogger):
                     f"The file with name '{remote_file_name}' will be stored as '{new_remote_file_name}'."
                 )
             )
-
-        extension = new_remote_file_name.split(".")[-1]
-
-        if extension == "txt":
-            return
 
         metadata = {
             f"timestamp/{k}": v for (k, v) in state.timestamp.state_dict().items()
@@ -58,13 +85,9 @@ class WandBLogger(composer.loggers.WandBLogger):
                 }
             )
 
-        # Change the extension so the checkpoint is compatible with W&B's model registry
-        if extension == "pt":
-            extension = "model"
-
         wandb_artifact = wandb.Artifact(
             name=new_remote_file_name,
-            type=extension,
+            type="model",
             metadata=metadata,
         )
         wandb_artifact.add_file(os.path.abspath(file_path))
@@ -89,7 +112,6 @@ class LabelSmoothing(composer.algorithms.LabelSmoothing):
 
             if isinstance(state.outputs, list):
                 # Multitask outputs.
-                # breakpoint()
 
                 # Check shapes match
                 b, tiers = labels.shape
