@@ -100,18 +100,17 @@ class FineGrainedAccuracy(torchmetrics.Metric):
         self.add_state("correct", default=torch.tensor(0), dist_reduce_fx="sum")
         self.add_state("total", default=torch.tensor(0), dist_reduce_fx="sum")
 
-    def update(self, outputs: list[torch.Tensor], target: torch.Tensor):
+    def update(self, outputs: list[torch.Tensor], targets: torch.Tensor):
         assert isinstance(outputs, list)
-        assert target.ndim > 1
+        assert targets.ndim > 1
 
-        preds = fine_grained_predictions(outputs, topk=self.topk).squeeze()
-        target = target[:, -1].squeeze()
+        # B x K
+        preds = fine_grained_predictions(outputs, topk=self.topk).view(-1, self.topk)
+        # B x K
+        targets = targets[:, -1].view(-1, 1).expand(preds.shape)
 
-        breakpoint()
-        # Look at the code in accuracy() in src/hierarchical.py in swin-transformer
-
-        self.correct += torch.sum(preds == target)
-        self.total += target.numel()
+        self.correct += torch.sum(preds == targets)
+        self.total += targets.numel() / self.topk  # B
 
     def compute(self):
         return self.correct.float() / self.total
@@ -158,7 +157,7 @@ class HierarchicalImageFolder(torchvision.datasets.ImageFolder):
         class_to_idxs = {}
 
         for cls in classes:
-            tiers = HierarchicalLabel.parse(cls).cleaned
+            tiers = HierarchicalLabel.parse(cls).clean_tiers
 
             for tier, value in enumerate(tiers):
                 if tier not in tier_lookup:
@@ -239,7 +238,7 @@ class HierarchicalLabel:
     def cleaned(self):
         return "_".join(
             [
-                str(self.number).rjust(5, '0'),
+                str(self.number).rjust(5, "0"),
                 self.kingdom,
                 self.phylum,
                 self.cls,
@@ -249,6 +248,18 @@ class HierarchicalLabel:
                 self.species,
             ]
         )
+
+    @property
+    def clean_tiers(self):
+        return [
+            self.kingdom,
+            self.phylum,
+            self.cls,
+            self.order,
+            self.family,
+            self.genus,
+            self.species,
+        ]
 
 
 class LeafCountLookup:

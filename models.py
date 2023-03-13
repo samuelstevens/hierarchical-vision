@@ -59,11 +59,13 @@ def build_composer_model(config: configs.Config, num_classes: int | list[int]):
     if config.hierarchy.variant == "multitask":
         train_metrics = {
             "cross-entropy": hierarchy.FineGrainedCrossEntropy(),
-            "acc@1": hierarchy.FineGrainedAccuracy(),
+            "acc@1": hierarchy.FineGrainedAccuracy(topk=1),
+            "acc@5": hierarchy.FineGrainedAccuracy(topk=5),
         }
         val_metrics = {
             "cross-entropy": hierarchy.FineGrainedCrossEntropy(),
-            "acc@1": hierarchy.FineGrainedAccuracy(),
+            "acc@1": hierarchy.FineGrainedAccuracy(topk=1),
+            "acc@5": hierarchy.FineGrainedAccuracy(topk=5),
         }
     else:
         assert isinstance(num_classes, int)
