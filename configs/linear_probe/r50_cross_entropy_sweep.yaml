@@ -1,0 +1,5 @@
+run_name: r50_cross_entropy_linear_probe_sweep_v1
+
+optim:
+  lr: { min: 1.0e-2, max: 10.0, scaling: log }
+  momentum: { min: 0, max: 0.95, scaling: uniform }

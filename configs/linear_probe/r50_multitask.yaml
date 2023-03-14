@@ -1,0 +1,54 @@
+run_name: r50_multitask_linear_probe
+max_duration: 10ep
+
+model:
+  name: resnet50
+  variant: linear-probing
+  pretrained_checkpoint: wandb://imageomics/hierarchical-vision/r50_inat21_multitask_1.pt:latest?ep36.pt
+
+train_dataset:
+  resize_size: 256
+  crop_size: 224
+  global_batch_size: 2048
+  # Use the std/mean from iNat21 pretrain split.
+  channel_mean: [ 0.463, 0.480, 0.376 ]
+  channel_std: [ 0.238, 0.229, 0.247 ]
+
+eval_dataset:
+  # Evaluation image resize size before crop
+  resize_size: 256
+  crop_size: 224
+  global_batch_size: 2048
+  # Use the std/mean from iNat21 pretrain split.
+  channel_mean: [ 0.463, 0.480, 0.376 ]
+  channel_std: [ 0.238, 0.229, 0.247 ]
+
+optim:
+  name: DecoupledSGDW
+  lr: 0.1
+  momentum: 0.875
+  weight_decay: 0
+
+scheduler:
+  t_warmup: 1ep
+  # Decay to base * alpha_f
+  alpha_f: 0.0
+
+algorithms:
+  - cls: BlurPool
+  - cls: ChannelsLast
+  - cls: EMA
+    args:
+      half_life: 100ba
+      update_interval: 20ba
+  - cls: PretrainedBackbone
+    args:
+      checkpoint: ${model.pretrained_checkpoint}
+      local_cache: ${machine.save_root}
+      strict: false
+
+save:
+  interval:
+  num_checkpoints_to_keep: 0
+  overwrite: true
+  wandb: false

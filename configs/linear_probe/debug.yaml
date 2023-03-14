@@ -1,0 +1,4 @@
+run_name: r50_debug_linear_probe
+
+model:
+  pretrained_checkpoint: wandb://imageomics/hierarchical-vision/r50_debug.pt:latest?ep0.pt

@@ -1,0 +1,4 @@
+run_name: r50_rand_species_cross_entropy_linear_probe
+
+model:
+  pretrained_checkpoint: wandb://imageomics/hierarchical-vision/r50_rand_species_cross_entropy.pt:latest?ep36.pt
