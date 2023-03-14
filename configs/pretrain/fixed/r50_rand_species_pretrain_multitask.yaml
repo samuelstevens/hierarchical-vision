@@ -1,4 +1,4 @@
-run_name: r50_pretrain_multitask
+run_name: r50_rand_species_pretrain_multitask
 seed: 0
 
 hierarchy:

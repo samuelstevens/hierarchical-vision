@@ -1,4 +1,4 @@
-run_name: r50_pretrain_cross_entropy_sweep
+run_name: r50_rand_species_cross_entropy_pretrain_sweep_v1
 
 optim:
   weight_decay: { choices: [ 3.0e-5, 1.0e-4, 3.0e-4, 1.0e-3, 3.0e-3, 1.0e-2 ] }
