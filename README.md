@@ -33,6 +33,18 @@ for split in species genus subtree
 done
 ```
 
+With slurm:
+```sh
+python submit_slurm.py \
+  --machine configs/machines/ascend.yaml \
+  --exp \
+    configs/pretrain/inat21.yaml \
+    configs/pretrain/inat21_$split.yaml \
+    configs/pretrain/r50_fast.yaml \
+    configs/pretrain/fixed/r50_pretrain_$objective.yaml \
+  --submit
+```
+
 Then we can do the downstream tasks.
 
 

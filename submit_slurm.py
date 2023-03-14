@@ -63,21 +63,15 @@ def submit_job(machine_file, exp_files, dry_run):
         print(e)
 
 
-def get_exp_files(exp, exp_dir):
-    if exp:
-        exp_file = os.path.join(os.getcwd(), exp)
-        if os.path.isfile(exp_file):
-            yield exp_file
+def get_exp_files(exp_dir):
+    exp_dir = os.path.join(os.getcwd(), exp_dir)
+    if not os.path.isdir(exp_dir):
+        print(f"'{exp_dir}' is not a directory!")
+        return
 
-    if exp_dir:
-        exp_dir = os.path.join(os.getcwd(), exp_dir)
-        if not os.path.isdir(exp_dir):
-            print(f"'{exp_dir}' is not a directory!")
-            return
-
-        for entry in os.scandir(exp_dir):
-            if entry.is_file():
-                yield entry.path
+    for entry in os.scandir(exp_dir):
+        if entry.is_file():
+            yield entry.path
 
 
 def get_config_file(file):
