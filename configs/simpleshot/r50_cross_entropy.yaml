@@ -1,0 +1,33 @@
+run_name: r50_rand_species_cross_entropy_simpleshot
+
+model:
+  name: resnet50
+  variant: simpleshot
+  pretrained_checkpoint: wandb://imageomics/hierarchical-vision/r50_rand_species_cross_entropy.pt:latest?ep36.pt
+
+train_dataset:
+  resize_size: 256
+  crop_size: 224
+  global_batch_size: 2048
+
+eval_dataset:
+  # Evaluation image resize size before crop
+  resize_size: 256
+  crop_size: 224
+  global_batch_size: 2048
+
+
+algorithms:
+  - cls: BlurPool
+  - cls: ChannelsLast
+  - cls: PretrainedBackbone
+    args:
+      checkpoint: ${model.pretrained_checkpoint}
+      local_cache: ${machine.save_root}
+      strict: false
+
+save:
+  interval:
+  num_checkpoints_to_keep: 0
+  overwrite: true
+  wandb: false
