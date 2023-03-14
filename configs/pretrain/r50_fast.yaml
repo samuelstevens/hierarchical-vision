@@ -5,6 +5,11 @@ model:
   name: resnet50
   variant: full-tuning
 
+optim:
+  lr: 2.0
+  momentum: 0.875
+  weight_decay: 5.0e-4
+
 algorithms:
   - cls: BlurPool
   - cls: ChannelsLast

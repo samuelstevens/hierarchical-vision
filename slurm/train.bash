@@ -2,7 +2,7 @@
 #SBATCH --nodes=1
 #SBATCH --account=PAS2136
 #SBATCH --gpus-per-node=4
-#SBATCH --time=02:00:00
+#SBATCH --time=08:00:00
 #SBATCH --partition=gpu
 #SBATCH --ntasks-per-node=32
 

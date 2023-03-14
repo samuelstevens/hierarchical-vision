@@ -41,6 +41,23 @@ def to_search_space(dct: dict[str, object], sep="."):
     return new
 
 
+def generate_grid(search_space):
+    """
+    Will remove all keys from search space.
+    """
+
+    if not search_space:
+        yield {}
+        return
+
+    key = next(iter(search_space))
+    value = search_space.pop(key)
+
+    for trial in generate_grid(search_space):
+        for v in value["choices"]:
+            yield {**trial, key: v}
+
+
 def main():
     args = parse_args()
 
@@ -50,11 +67,30 @@ def main():
 
     search_space = to_search_space(OmegaConf.to_container(sweep_config))
 
+    # Check if we can just do grid search.
+    sampling_strategy = "grid"
+    count = 1
+    for key, value in search_space.items():
+        if "choices" not in value:
+            # have to use random sampling
+            sampling_strategy = "random"
+            break
+
+        count *= len(value["choices"])
+
+    # We can just do grid search
+    if sampling_strategy == "grid" and count < args.count:
+        print("Doing grid search.")
+        trials = generate_grid(search_space)
+    else:
+        print("Doing quasi-random search.")
+        trials = halton.generate_search(search_space, args.count)
+
     # Make the output directory for the generated configs
     output_dir = pathlib.Path(args.output) / f"sweep-{run_name}"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    for i, trial in enumerate(tqdm(halton.generate_search(search_space, args.count))):
+    for i, trial in enumerate(tqdm(trials)):
         config = OmegaConf.create(
             {
                 "seed": i,

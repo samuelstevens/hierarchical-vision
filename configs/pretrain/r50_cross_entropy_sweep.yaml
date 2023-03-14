@@ -1,6 +1,4 @@
 run_name: r50_pretrain_cross_entropy_sweep
 
 optim:
-  lr: { min: 0.5, max: 2.5, scaling: log }
-  momentum: { min: 0.8, max: 0.95, scaling: uniform }
-  weight_decay: { min: 1.0e-5, max: 1.0e-3, scaling: log }
+  weight_decay: { choices: [ 3.0e-5, 1.0e-4, 3.0e-4, 1.0e-3, 3.0e-3, 1.0e-2 ] }
