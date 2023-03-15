@@ -1,5 +1,0 @@
-run_name: r50_multitask_linear_probe_sweep_v3
-
-optim:
-  lr: { min: 1.0, max: 10.0, scaling: uniform }
-  momentum: { min: 0, max: 0.95, scaling: uniform }

@@ -1,10 +1,11 @@
-run_name: r50_pretrain_cross_entropy
+run_name: r50_rand_genus_pretrain_cross_entropy
 seed: 0
 
 optim:
   lr: 2.0
   momentum: 0.875
-  weight_decay: 0.0025
+  weight_decay: 0.001
+
 
 save:
   interval:

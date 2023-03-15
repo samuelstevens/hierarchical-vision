@@ -19,6 +19,7 @@ from composer.loggers import FileLogger
 from composer.utils import dist, reproducibility
 from omegaconf import OmegaConf
 
+import algorithmic
 import configs
 import data
 import models
@@ -55,7 +56,7 @@ def main(config):
     )
 
     if is_master:
-        wandb.init(name=config.run_name)
+        wandb.init(name=config.run_name, tags=config.tags)
 
     # Checkpointing stuff
     save_folder = os.path.join(config.machine.save_root, config.run_name)
@@ -98,11 +99,7 @@ def main(config):
     algorithms = []
 
     for algorithm in config.algorithms:
-        # We override some versions of the algorithms
-        if algorithm.cls in monkey_patch.patched_algorithms:
-            cls = getattr(monkey_patch, algorithm.cls)
-        else:
-            cls = getattr(composer.algorithms, algorithm.cls)
+        cls = getattr(algorithmic, algorithm.cls)
         algorithms.append(cls(**algorithm.args))
 
     trainer = composer.Trainer(
@@ -124,7 +121,7 @@ def main(config):
         precision=precision,
         grad_accum=config.grad_accum,
         seed=config.seed,
-        algorithm_passes=[monkey_patch.PretrainedBackbone.get_algorithm_pass()],
+        algorithm_passes=[algorithmic.PretrainedBackbone.get_algorithm_pass()],
     )
 
     print("Logging config:\n")

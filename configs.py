@@ -55,6 +55,8 @@ class SchedulerConfig:
     alpha_f: float = 0.0
 
 
+# The only thing I'm ever doing is saving the last model or not saving anything.
+# How can I simplify this configuration?
 @dataclass
 class SaveConfig:
     interval: Optional[str] = "10ep"
@@ -96,6 +98,8 @@ class Config:
     max_duration: str = "90ep"
     grad_accum: str = "auto"
     load_path: Optional[str] = None
+    # wandb tags
+    tags: list[str] = field(default_factory=list)
 
     hierarchy: HierarchyConfig = field(default_factory=HierarchyConfig)
 

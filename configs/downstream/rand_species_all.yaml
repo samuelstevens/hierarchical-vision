@@ -1,0 +1,7 @@
+train_dataset:
+  path: rand-species-downstream
+  drop_last: true
+  shuffle: true
+
+eval_dataset:
+  path: rand-species-downstream
