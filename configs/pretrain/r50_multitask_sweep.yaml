@@ -1,14 +1,6 @@
-run_name: r50_pretrain_multitask_sweep
+run_name: r50_rand_species_multitask_pretrain_sweep_v1
 
 optim:
   lr: { min: 1.0e-2, max: 3.0, scaling: log }
   momentum: { min: 0.8, max: 0.95, scaling: uniform }
   weight_decay: { min: 1.0e-6, max: 1.0e-2, scaling: log }
-
-
-hierarchy:
-  multitask_coeffs: { choices: [
-    [ 8, 5.65, 4, 2.82, 2, 1.41, 1 ],
-    [ 1, 1,    1, 1,    1, 1,    1 ],
-    [ 1, 1.41, 2, 2.82, 4, 5.65, 8 ],
-  ] }
