@@ -131,7 +131,7 @@ class TreeDistance(torchmetrics.Metric):
 
     def __init__(self, tree_dists):
         super().__init__()
-        # matrix where row i, col j has the severity between class i and class j.
+        # matrix where row i, col j has the distance between class i and class j.
         self.register_buffer("tree_dists", tree_dists)
         self.add_state("distance", default=torch.tensor(0), dist_reduce_fx="sum")
         self.add_state("total", default=torch.tensor(0), dist_reduce_fx="sum")
@@ -144,7 +144,7 @@ class TreeDistance(torchmetrics.Metric):
         self.total += targets.numel()
 
     def compute(self):
-        return self.severity.float() / self.total
+        return self.distance.float() / self.total
 
 
 class FineGrainedTreeDistance(TreeDistance):

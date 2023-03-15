@@ -1,4 +1,4 @@
-run_name: r50_rand_species_pretrain_multitask
+run_name: r50_rand_species_multitask_pretrain_3
 seed: 0
 
 hierarchy:
@@ -6,9 +6,9 @@ hierarchy:
   multitask_coeffs: [ 8, 5.65, 4, 2.82, 2, 1.41, 1 ]
 
 optim:
-  lr: 0.70
-  momentum: 0.930
-  weight_decay: 6.0e-4
+  lr: 0.9
+  momentum: 0.90
+  weight_decay: 2.0e-5
 
 save:
   interval:

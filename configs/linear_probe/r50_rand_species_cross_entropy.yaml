@@ -7,4 +7,4 @@ tags:
   - k-shot/all
 
 model:
-  pretrained_checkpoint: wandb://imageomics/hierarchical-vision/r50_rand_species_pretrain_cross_entropy.pt:latest?ep36.pt
+  pretrained_checkpoint: wandb://imageomics/hierarchical-vision/r50_rand_species_cross_entropy_pretrain.pt:latest?ep36.pt

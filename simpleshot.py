@@ -39,7 +39,7 @@ def cache_path(config, is_train) -> str:
 
 
 def tree_distance(labels, preds, *, tree_dists):
-    return np.sum(tree_dists[preds, labels]) / label.size
+    return np.sum(tree_dists[preds, labels]) / labels.size
 
 
 def build_dataloader(config: configs.Config, is_train: bool = True) -> DataLoader:

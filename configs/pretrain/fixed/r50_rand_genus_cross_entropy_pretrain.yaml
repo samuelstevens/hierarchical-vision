@@ -1,4 +1,4 @@
-run_name: r50_rand_genus_pretrain_cross_entropy
+run_name: r50_rand_genus_cross_entropy_pretrain
 seed: 0
 
 optim:
