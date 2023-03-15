@@ -47,12 +47,21 @@ def main(config):
         local_train_batch_size //= dist.get_world_size()
         local_eval_batch_size //= dist.get_world_size()
 
-    train_dataspec, num_classes = data.build_dataspec(
+    train_dataspec, dataset_info = data.build_dataspec(
         config, local_batch_size=local_train_batch_size, is_train=True
     )
 
     eval_dataspec, _ = data.build_dataspec(
         config, local_batch_size=local_eval_batch_size, is_train=False
+    )
+
+    composer_model = models.build_composer_model(config, dataset_info)
+
+    optimizer = optim.build_optimizer(config, composer_model)
+
+    # Learning rate scheduler: LR warmup then cosine decay for the rest of training
+    lr_scheduler = composer.optim.CosineAnnealingWithWarmupScheduler(
+        t_warmup=config.scheduler.t_warmup, alpha_f=config.scheduler.alpha_f
     )
 
     if is_master:
@@ -79,15 +88,6 @@ def main(config):
             filename=os.path.join(save_folder, "logs", "log{rank}.txt"), overwrite=True
         ),
     ]
-
-    composer_model = models.build_composer_model(config, num_classes)
-
-    optimizer = optim.build_optimizer(config, composer_model)
-
-    # Learning rate scheduler: LR warmup then cosine decay for the rest of training
-    lr_scheduler = composer.optim.CosineAnnealingWithWarmupScheduler(
-        t_warmup=config.scheduler.t_warmup, alpha_f=config.scheduler.alpha_f
-    )
 
     # Measures throughput as samples/sec and tracks total training time
     speed_monitor = SpeedMonitor(window_size=50)

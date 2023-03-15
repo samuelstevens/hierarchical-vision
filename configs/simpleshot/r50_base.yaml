@@ -1,20 +1,20 @@
-run_name: r50_rand_species_cross_entropy_simpleshot
+run_name: r50_simpleshot
 
 model:
   name: resnet50
-  variant: simpleshot
-  pretrained_checkpoint: wandb://imageomics/hierarchical-vision/r50_rand_species_cross_entropy.pt:latest?ep36.pt
+  variant: OVERRIDE
+  pretrained_checkpoint: OVERRIDE
 
 train_dataset:
   resize_size: 256
   crop_size: 224
-  global_batch_size: 2048
+  global_batch_size: 4096
 
 eval_dataset:
   # Evaluation image resize size before crop
   resize_size: 256
   crop_size: 224
-  global_batch_size: 2048
+  global_batch_size: 4096
 
 
 algorithms:

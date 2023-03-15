@@ -1,0 +1,5 @@
+run_name: r50_rand_species_cross_entropy_simpleshot_l2n
+
+model:
+  variant: simpleshot-l2n
+  pretrained_checkpoint: wandb://imageomics/hierarchical-vision/r50_rand_species_pretrain_cross_entropy.pt:latest?ep36.pt

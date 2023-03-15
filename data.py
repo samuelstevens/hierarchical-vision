@@ -1,6 +1,8 @@
 # Copyright 2022 MosaicML Examples authors
 # SPDX-License-Identifier: Apache-2.0
+# Additionally hacked on by Samuel Stevens.
 
+import dataclasses
 import os
 
 import numpy as np
@@ -74,6 +76,20 @@ def pil_image_collate(
     return image_tensor, target_tensor
 
 
+@dataclasses.dataclass(frozen=True)
+class DatasetInfo:
+    """
+    Misc. information about the dataset.
+    """
+
+    # Number of classes.
+    num_classes: int | list[int]
+
+    # Matrix of num_classes x num_classes.
+    # Entry at i, j is the tree distance from class i to class j.
+    tree_dists: torch.Tensor | None
+
+
 # Builder
 # -------
 # Main function for data.py
@@ -83,8 +99,8 @@ def build_dataspec(
     config: configs.Config,
     local_batch_size: int,
     is_train: bool = True,
-    **dataloader_kwargs,
-) -> tuple[DataSpec, int]:
+    **dataloader_kwargs
+) -> tuple[DataSpec, DatasetInfo]:
     if is_train:
         split = "train"
         data_cfg = config.train_dataset
@@ -128,6 +144,7 @@ def build_dataspec(
 
     path = config.machine.datasets[data_cfg.path]
     dataset = dataset_cls(os.path.join(path, split), transform)
+    tree_dists = hierarchy.build_tree_dist_matrix(path)
     sampler = dist.get_sampler(
         dataset, drop_last=data_cfg.drop_last, shuffle=data_cfg.shuffle
     )
@@ -147,7 +164,7 @@ def build_dataspec(
         device_transforms=device_transform_fn,
     )
 
-    return dataspec, dataset.num_classes
+    return dataspec, DatasetInfo(num_classes=dataset.num_classes, tree_dists=tree_dists)
 
 
 default_dataloader_kwargs = dict(

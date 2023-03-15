@@ -8,7 +8,13 @@ import re
 
 import composer
 import torch
-from composer.algorithms import EMA, BlurPool, ChannelsLast, ProgressiveResizing, GradientClipping
+from composer.algorithms import (
+    EMA,
+    BlurPool,
+    ChannelsLast,
+    GradientClipping,
+    ProgressiveResizing,
+)
 
 import wandb
 

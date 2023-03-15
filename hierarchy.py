@@ -1,12 +1,14 @@
 import collections
 import dataclasses
 import os
+import pathlib
 
 import composer.metrics
 import einops
 import torch.nn
 import torchmetrics
 import torchvision.datasets
+from tqdm.auto import tqdm
 
 
 class MultitaskHead(torch.nn.Module):
@@ -114,6 +116,46 @@ class FineGrainedAccuracy(torchmetrics.Metric):
 
     def compute(self):
         return self.correct.float() / self.total
+
+
+class TotalErrorSeverity(torchmetrics.Metric):
+    """
+    For use with flat classification.
+    """
+
+    is_differentiable = False
+    higher_is_better = False
+    # Try turning this off and see if it improves performance while producing the same results.
+    # https://torchmetrics.readthedocs.io/en/stable/pages/implement.html#internal-implementation-details
+    full_state_update = True
+
+    def __init__(self, tree_dists):
+        super().__init__()
+        # matrix where row i, col j has the severity between class i and class j.
+        self.register_buffer("tree_dists", tree_dists)
+        self.add_state("severity", default=torch.tensor(0), dist_reduce_fx="sum")
+
+    def update(self, outputs: torch.Tensor, targets: torch.Tensor):
+        preds = fine_grained_predictions(outputs, topk=1).squeeze()
+        targets = targets.squeeze()
+
+        self.severity += torch.sum(self.tree_dists[preds, targets])
+
+    def compute(self):
+        return self.severity.int()
+
+
+class FineGrainedTotalErrorSeverity(TotalErrorSeverity):
+    """
+    For use in multitask training.
+    """
+
+    def update(self, outputs: list[torch.Tensor], targets: torch.Tensor):
+        assert isinstance(outputs, list)
+        assert targets.ndim > 1
+
+        outputs, targets = outputs[-1], targets[:, -1]
+        super().update(outputs, targets)
 
 
 class FineGrainedCrossEntropy(composer.metrics.CrossEntropy):
@@ -261,6 +303,23 @@ class HierarchicalLabel:
             self.species,
         ]
 
+    def dist(self, other: "HierarchicalLabel") -> int:
+        if self.species == other.species:
+            return 0
+        if self.genus == other.genus:
+            return 1
+        if self.family == other.family:
+            return 2
+        if self.order == other.order:
+            return 3
+        if self.cls == other.cls:
+            return 4
+        if self.phylum == other.phylum:
+            return 5
+        if self.kingdom == other.kingdom:
+            return 6
+        return 7
+
 
 class LeafCountLookup:
     def __init__(self, labels: list[HierarchicalLabel]):
@@ -311,7 +370,6 @@ def fine_grained_predictions(output, topk=1, hierarchy_level=-1):
     (default -1, which is the fine-grained level).
     """
     if isinstance(output, list):
-        len(output)
         output = output[hierarchy_level]
 
     batch_size, num_classes = output.shape
@@ -319,3 +377,41 @@ def fine_grained_predictions(output, topk=1, hierarchy_level=-1):
     maxk = min(topk, num_classes)
     _, pred = output.topk(maxk, dim=1, largest=True, sorted=True)
     return pred
+
+
+def build_tree_dist_matrix(directory: str) -> torch.Tensor:
+    """
+    Builds a distance matrix for all classes in directory/train and directory/val.
+
+    If the file "directory/tree_dist_cache.pt" exists, just load it directly.
+    """
+
+    cache_name = "tree_dist_cache.pt"
+
+    directory = pathlib.Path(directory)
+
+    if (directory / cache_name).is_file():
+        return torch.load(directory / cache_name)
+
+    train_labels = {cls.stem for cls in (directory / "train").iterdir()}
+    val_labels = {cls.stem for cls in (directory / "val").iterdir()}
+    labels = [
+        HierarchicalLabel.parse(label) for label in sorted(train_labels | val_labels)
+    ]
+
+    # Distance is at least 0 and at most 7, so we can use uint8
+    matrix = torch.zeros((len(labels), len(labels)), dtype=torch.uint8)
+
+    for i, label_i in enumerate(tqdm(labels, desc="Buliding tree distance matrix")):
+        for j, label_j in enumerate(labels):
+            if j < i:
+                continue
+            matrix[i, j] = label_i.dist(label_j)
+            matrix[j, i] = matrix[i, j]
+
+    for i in range(len(labels)):
+        assert matrix[i, i] == 0, f"matrix[{i}, {i}] == {matrix[i, i]}, not 0!"
+
+    torch.save(matrix, directory / cache_name)
+
+    return matrix

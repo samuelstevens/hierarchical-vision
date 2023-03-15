@@ -9,6 +9,7 @@ from composer.metrics import CrossEntropy
 from torchmetrics import Metric
 
 import configs
+import data
 import hierarchy
 
 
@@ -43,7 +44,7 @@ def build_model(config: configs.Config, num_classes: int | list[int]):
         model = LinearProbe(model, 2048, num_classes)
     elif config.model.variant == "full-tuning":
         pass
-    elif config.model.variant == "simpleshot":
+    elif config.model.variant in ("simpleshot", "simpleshot-l2n", "simpleshot-cl2n"):
         model = FeatureOnlyModel(model)
     else:
         raise ValueError(config.model.variant)
@@ -51,7 +52,9 @@ def build_model(config: configs.Config, num_classes: int | list[int]):
     return model
 
 
-def build_composer_model(config: configs.Config, num_classes: int | list[int]):
+def build_composer_model(config: configs.Config, dataset_info: data.DatasetInfo):
+    num_classes = dataset_info.num_classes
+
     model = build_model(config, num_classes)
 
     # Metrics
@@ -61,11 +64,17 @@ def build_composer_model(config: configs.Config, num_classes: int | list[int]):
             "cross-entropy": hierarchy.FineGrainedCrossEntropy(),
             "acc@1": hierarchy.FineGrainedAccuracy(topk=1),
             "acc@5": hierarchy.FineGrainedAccuracy(topk=5),
+            "err-sev": hierarchy.FineGrainedTotalErrorSeverity(
+                tree_dists=dataset_info.tree_dists
+            ),
         }
         val_metrics = {
             "cross-entropy": hierarchy.FineGrainedCrossEntropy(),
             "acc@1": hierarchy.FineGrainedAccuracy(topk=1),
             "acc@5": hierarchy.FineGrainedAccuracy(topk=5),
+            "err-sev": hierarchy.FineGrainedTotalErrorSeverity(
+                tree_dists=dataset_info.tree_dists
+            ),
         }
     else:
         assert isinstance(num_classes, int)
@@ -76,6 +85,7 @@ def build_composer_model(config: configs.Config, num_classes: int | list[int]):
             "acc@5": torchmetrics.Accuracy(
                 task="multiclass", num_classes=num_classes, top_k=5
             ),
+            "err-sev": hierarchy.TotalErrorSeverity(tree_dists=dataset_info.tree_dists),
         }
         val_metrics = {
             "cross-entropy": CrossEntropy(),
@@ -83,6 +93,7 @@ def build_composer_model(config: configs.Config, num_classes: int | list[int]):
             "acc@5": torchmetrics.Accuracy(
                 task="multiclass", num_classes=num_classes, top_k=5
             ),
+            "err-sev": hierarchy.TotalErrorSeverity(tree_dists=dataset_info.tree_dists),
         }
 
     # Loss Function
