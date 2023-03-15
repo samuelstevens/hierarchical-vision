@@ -8,7 +8,7 @@ import re
 
 import composer
 import torch
-from composer.algorithms import EMA, BlurPool, ChannelsLast, ProgressiveResizing
+from composer.algorithms import EMA, BlurPool, ChannelsLast, ProgressiveResizing, GradientClipping
 
 import wandb
 
@@ -19,6 +19,7 @@ __all__ = [
     "CaptureFeatures",
     "ChannelsLast",
     "EMA",
+    "GradientClipping",
     "PretrainedBackbone",
     "ProgressiveResizing",
     "LabelSmoothing",
