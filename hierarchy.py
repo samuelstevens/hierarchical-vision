@@ -118,9 +118,9 @@ class FineGrainedAccuracy(torchmetrics.Metric):
         return self.correct.float() / self.total
 
 
-class TotalErrorSeverity(torchmetrics.Metric):
+class TreeDistance(torchmetrics.Metric):
     """
-    For use with flat classification.
+    For use with cross-entropy-based classifiers.
     """
 
     is_differentiable = False
@@ -133,19 +133,21 @@ class TotalErrorSeverity(torchmetrics.Metric):
         super().__init__()
         # matrix where row i, col j has the severity between class i and class j.
         self.register_buffer("tree_dists", tree_dists)
-        self.add_state("severity", default=torch.tensor(0), dist_reduce_fx="sum")
+        self.add_state("distance", default=torch.tensor(0), dist_reduce_fx="sum")
+        self.add_state("total", default=torch.tensor(0), dist_reduce_fx="sum")
 
     def update(self, outputs: torch.Tensor, targets: torch.Tensor):
         preds = fine_grained_predictions(outputs, topk=1).squeeze()
         targets = targets.squeeze()
 
-        self.severity += torch.sum(self.tree_dists[preds, targets])
+        self.distance += torch.sum(self.tree_dists[preds, targets])
+        self.total += targets.numel()
 
     def compute(self):
-        return self.severity.int()
+        return self.severity.float() / self.total
 
 
-class FineGrainedTotalErrorSeverity(TotalErrorSeverity):
+class FineGrainedTreeDistance(TreeDistance):
     """
     For use in multitask training.
     """

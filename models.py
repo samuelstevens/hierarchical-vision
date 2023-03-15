@@ -64,7 +64,7 @@ def build_composer_model(config: configs.Config, dataset_info: data.DatasetInfo)
             "cross-entropy": hierarchy.FineGrainedCrossEntropy(),
             "acc@1": hierarchy.FineGrainedAccuracy(topk=1),
             "acc@5": hierarchy.FineGrainedAccuracy(topk=5),
-            "err-sev": hierarchy.FineGrainedTotalErrorSeverity(
+            "tree-dist": hierarchy.FineGrainedTreeDistance(
                 tree_dists=dataset_info.tree_dists
             ),
         }
@@ -72,7 +72,7 @@ def build_composer_model(config: configs.Config, dataset_info: data.DatasetInfo)
             "cross-entropy": hierarchy.FineGrainedCrossEntropy(),
             "acc@1": hierarchy.FineGrainedAccuracy(topk=1),
             "acc@5": hierarchy.FineGrainedAccuracy(topk=5),
-            "err-sev": hierarchy.FineGrainedTotalErrorSeverity(
+            "tree-dist": hierarchy.FineGrainedTreeDistance(
                 tree_dists=dataset_info.tree_dists
             ),
         }
@@ -85,7 +85,7 @@ def build_composer_model(config: configs.Config, dataset_info: data.DatasetInfo)
             "acc@5": torchmetrics.Accuracy(
                 task="multiclass", num_classes=num_classes, top_k=5
             ),
-            "err-sev": hierarchy.TotalErrorSeverity(tree_dists=dataset_info.tree_dists),
+            "tree-dist": hierarchy.TreeDistance(tree_dists=dataset_info.tree_dists),
         }
         val_metrics = {
             "cross-entropy": CrossEntropy(),
@@ -93,7 +93,7 @@ def build_composer_model(config: configs.Config, dataset_info: data.DatasetInfo)
             "acc@5": torchmetrics.Accuracy(
                 task="multiclass", num_classes=num_classes, top_k=5
             ),
-            "err-sev": hierarchy.TotalErrorSeverity(tree_dists=dataset_info.tree_dists),
+            "tree-dist": hierarchy.TreeDistance(tree_dists=dataset_info.tree_dists),
         }
 
     # Loss Function

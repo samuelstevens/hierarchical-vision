@@ -38,8 +38,8 @@ def cache_path(config, is_train) -> str:
     return os.path.join(save_dir, filename)
 
 
-def total_error_severity(labels, preds, *, tree_dists):
-    return np.sum(tree_dists[preds, labels])
+def tree_distance(labels, preds, *, tree_dists):
+    return np.sum(tree_dists[preds, labels]) / label.size
 
 
 def build_dataloader(config: configs.Config, is_train: bool = True) -> DataLoader:
@@ -174,7 +174,7 @@ def main(config):
 
     metrics = {
         "acc@1": np.sum(preds == test_classes) / len(test_classes),
-        "err-sev": total_error_severity(test_classes, preds, tree_dists=tree_dists),
+        "tree-dist": tree_distance(test_classes, preds, tree_dists=tree_dists),
     }
 
     for key, value in metrics.items():
