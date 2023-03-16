@@ -121,6 +121,8 @@ class FineGrainedAccuracy(torchmetrics.Metric):
 class TreeDistance(torchmetrics.Metric):
     """
     For use with cross-entropy-based classifiers.
+
+    It currently has a memory leak. Only use it if you are not training.
     """
 
     is_differentiable = False

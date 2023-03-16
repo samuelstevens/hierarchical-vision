@@ -1,5 +1,6 @@
 run_name: r50_inat21
 max_duration: 36ep
+grad_accum: 1
 
 train_dataset:
   # Image resize size before crop, -1 means no resize

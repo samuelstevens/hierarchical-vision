@@ -96,7 +96,7 @@ class Config:
     is_train: bool = True
     seed: int = 42
     max_duration: str = "90ep"
-    grad_accum: str = "auto"
+    grad_accum: str | int = "auto"
     load_path: Optional[str] = None
     # wandb tags
     tags: list[str] = field(default_factory=list)
