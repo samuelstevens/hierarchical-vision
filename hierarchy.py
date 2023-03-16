@@ -406,7 +406,7 @@ def build_tree_dist_matrix(directory: str) -> torch.Tensor:
     # Distance is at least 0 and at most 7, so we can use uint8
     matrix = torch.zeros((len(labels), len(labels)), dtype=torch.uint8)
 
-    for i, label_i in enumerate(tqdm(labels, desc="Buliding tree distance matrix")):
+    for i, label_i in enumerate(tqdm(labels, desc="Building tree dist. matrix")):
         for j, label_j in enumerate(labels):
             if j < i:
                 continue
