@@ -16,13 +16,13 @@ from composer.algorithms import (
     ProgressiveResizing,
 )
 
+import swinv2
 import wandb
 
 log = logging.getLogger(__name__)
 
 __all__ = [
     "BlurPool",
-    "CaptureFeatures",
     "ChannelsLast",
     "EMA",
     "GradientClipping",
@@ -30,28 +30,6 @@ __all__ = [
     "ProgressiveResizing",
     "LabelSmoothing",
 ]
-
-
-class CaptureFeatures(composer.Algorithm):
-    def __init__(self, train, eval, save):
-        self.train = train
-        self.eval = eval
-        self.save = os.path.join(save, "features")
-
-    def match(self, event, state):
-        if self.train and event == composer.Event.AFTER_FORWARD:
-            return True
-        if self.eval and event == composer.Event.EVAL_AFTER_FORWARD:
-            return True
-
-        return False
-
-    def apply(self, event, state, logger):
-        """
-        Put the outputs in a big vector. At the end of evaluation,
-        save it to disk somewhere.
-        """
-        breakpoint()
 
 
 class PretrainedBackbone(composer.Algorithm):
@@ -63,9 +41,7 @@ class PretrainedBackbone(composer.Algorithm):
 
     def __init__(self, checkpoint, local_cache, strict):
         self.checkpoint = WandbCheckpoint.parse(checkpoint)
-        self.local_cache = os.path.join(
-            local_cache, "wandb-artifacts", self.checkpoint.url
-        )
+        self.local_cache = local_cache
         self.strict = strict
 
         os.makedirs(self.local_cache, exist_ok=True)
@@ -90,26 +66,15 @@ class PretrainedBackbone(composer.Algorithm):
 
     @staticmethod
     def load_pretrained_backbone(checkpoint, model_with_backbone, local_cache, strict):
-        assert hasattr(model_with_backbone, "backbone")
+        model_dict = checkpoint.load_model_dict(local_cache)
 
-        downloaded_filepath = (
-            wandb.run.use_artifact(checkpoint.url)
-            .get_path(checkpoint.filepath)
-            .download(root=local_cache)
-        )
-        state_dict = torch.load(downloaded_filepath, map_location="cpu")["state"]
-        torch.nn.modules.utils.consume_prefix_in_state_dict_if_present(
-            state_dict["model"], "module."
-        )
         # Delete the linear head keys
-        head_keys = {
-            key for key in state_dict["model"].keys() if "fc." in key or "head." in key
-        }
+        head_keys = {key for key in model_dict.keys() if "fc." in key or "head." in key}
         for key in head_keys:
-            del state_dict["model"][key]
+            del model_dict[key]
 
         missing, unexpected = model_with_backbone.backbone.load_state_dict(
-            state_dict["model"], strict=strict
+            model_dict, strict=strict
         )
         # Don't worry about missing the head keys.
         missing = [key for key in missing if key not in head_keys]
@@ -164,9 +129,32 @@ class WandbCheckpoint:
     def parse(cls, uri):
         match = re.match(r"^wandb://([\w./-]+:[\w./-]+)\?([\w./-]+)$", uri)
         if not match:
-            raise ValueError(f"uri '{uri}' doesn't match pattern!")
+            raise ValueError(f"uri '{uri}' doesn't match the pattern!")
 
         return cls("wandb", *match.groups())
+
+    def load_model_dict(self, cache):
+        cache = os.path.join(cache, "wandb-artifacts", self.url)
+        downloaded = (
+            wandb.run.use_artifact(self.url)
+            .get_path(self.filepath)
+            .download(root=cache)
+        )
+        model_dict = torch.load(downloaded, map_location="cpu")["state"]["model"]
+        torch.nn.modules.utils.consume_prefix_in_state_dict_if_present(
+            model_dict, "module."
+        )
+        return model_dict
+
+
+def parse_checkpoint(uri: str):
+    for cls in [WandbCheckpoint, swinv2.Checkpoint]:
+        try:
+            return cls.parse(uri)
+        except ValueError:
+            pass
+
+    raise ValueError(f"Could not parse {uri}")
 
 
 def smooth_labels(logits: torch.Tensor, target: torch.Tensor, smoothing: float = 0.1):

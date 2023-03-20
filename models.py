@@ -39,11 +39,10 @@ def build_model(config: configs.Config, num_classes: int | list[int]):
 
     model.apply(weight_init)
 
-    if config.model.variant == "linear-probing":
-        # TODO: don't hardcode 2048
-        model = LinearProbe(model, 2048, num_classes)
-    elif config.model.variant == "full-tuning":
+    if config.model.variant == "full-tuning":
         pass
+    elif config.model.variant == "linear-probe":
+        model = FeatureOnlyModel(model)
     elif config.model.variant in ("simpleshot", "simpleshot-l2n", "simpleshot-cl2n"):
         model = FeatureOnlyModel(model)
     else:

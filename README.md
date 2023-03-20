@@ -54,6 +54,14 @@ Then we can do the downstream tasks.
 python -m tools.low_data_split --input /local/scratch/cv_datasets/inat21/rand-species-split/downstream/ --output /local/scratch/cv_datasets/inat21/rand-species-split/downstream-1shot --shots 1
 python -m tools.low_data_split --input /local/scratch/cv_datasets/inat21/rand-species-split/downstream/ --output /local/scratch/cv_datasets/inat21/rand-species-split/downstream-5shot --shots 5
 python -m tools.low_data_split --input /local/scratch/cv_datasets/inat21/rand-species-split/downstream/ --output /local/scratch/cv_datasets/inat21/rand-species-split/downstream-10shot --shots 10
+
+python -m tools.low_data_split --input /local/scratch/cv_datasets/inat21/rand-genus-split/downstream/ --output /local/scratch/cv_datasets/inat21/rand-genus-split/downstream-1shot --shots 1
+python -m tools.low_data_split --input /local/scratch/cv_datasets/inat21/rand-genus-split/downstream/ --output /local/scratch/cv_datasets/inat21/rand-genus-split/downstream-5shot --shots 5
+python -m tools.low_data_split --input /local/scratch/cv_datasets/inat21/rand-genus-split/downstream/ --output /local/scratch/cv_datasets/inat21/rand-genus-split/downstream-10shot --shots 10
+
+python -m tools.low_data_split --input /local/scratch/cv_datasets/inat21/rand-subtree-split/downstream/ --output /local/scratch/cv_datasets/inat21/rand-subtree-split/downstream-1shot --shots 1
+python -m tools.low_data_split --input /local/scratch/cv_datasets/inat21/rand-subtree-split/downstream/ --output /local/scratch/cv_datasets/inat21/rand-subtree-split/downstream-5shot --shots 5
+python -m tools.low_data_split --input /local/scratch/cv_datasets/inat21/rand-subtree-split/downstream/ --output /local/scratch/cv_datasets/inat21/rand-subtree-split/downstream-10shot --shots 10
 ```
 
 ## Run Low Data Experiments

@@ -5,6 +5,11 @@ import pathlib
 
 import composer.metrics
 import einops
+import numpy as np
+import sklearn.exceptions
+import sklearn.metrics
+import sklearn.neighbors
+import sklearn.preprocessing
 import torch.nn
 import torchmetrics
 import torchvision.datasets
@@ -419,3 +424,196 @@ def build_tree_dist_matrix(directory: str) -> torch.Tensor:
     torch.save(matrix, directory / cache_name)
 
     return matrix
+
+
+def build_parent_label_lookup(directory) -> np.ndarray:
+    """
+    Builds a lookup from child label to parent label in the form of (n_tiers - 1) vectors.
+
+    Suppose we have four classes total (sorry for the awful names):
+        00001_animalia_chordata_aves_
+        00002_animalia_chordata_reptila
+        00003_plantae_bush_leafy
+        00004_plantae_tree_spiny
+
+    We have 2 kingdoms (animalia, plantae), 3 phylum (chordata, bush, tree) and 4 orders
+    (aves, reptilia, leafy, spiny).
+
+    The example lookup is two vectors (3 tiers - 1):
+
+    [ 0 1 1 ] chordata(0) -> animalia(0), bush(1) -> plantae(1), tree(2) -> plantae(1)
+    [ 0 0 1 2 ] aves(0) -> chordata(0), reptilia(1) -> chordata(0), leafy(2) -> bush(1), spiny(3) -> tree(2)
+    """
+    directory = pathlib.Path(directory)
+
+    train_labels = {cls.stem for cls in (directory / "train").iterdir()}
+    val_labels = {cls.stem for cls in (directory / "val").iterdir()}
+    labels = [
+        HierarchicalLabel.parse(label) for label in sorted(train_labels | val_labels)
+    ]
+
+    # We are always doing taxonomies with 7 tiers.
+    n_tiers = 7
+
+    # lookups[i][tier_label] is the integer representation for the tier_label at tier i
+    # In the above example, lookups would be:
+    # [
+    #   {"animalia": 0, "plantae": 1},
+    #   {"chordata": 0, "bush": 1, "tree": 2},
+    #   {"aves": 0, "reptilia": 1, "leafy": 2, "spiny": 3},
+    # ]
+    lookups = [{} for _ in range(n_tiers)]
+    for label in labels:
+        for i, tier_label in enumerate(label.clean_tiers):
+            if tier_label not in lookups[i]:
+                lookups[i][tier_label] = len(lookups[i])
+
+    vectors = []
+    for i, _ in enumerate(lookups):
+        # skip the first one
+        if i == 0:
+            continue
+
+        vec = np.zeros((len(lookups[i]),), dtype=np.uint16)
+        for label in labels:
+            vec[lookups[i][label.clean_tiers[i]]] = lookups[i - 1][
+                label.clean_tiers[i - 1]
+            ]
+
+        vectors.append(vec)
+
+    return vectors
+
+
+class HierarchicalNearestCentroid(sklearn.neighbors.NearestCentroid):
+    metric = "euclidean"
+
+    def __init__(self, lookup_vecs):
+        self.lookup_vecs = lookup_vecs
+        pass
+
+    def fit(self, X, y):
+        """
+        Fit the NearestCentroid model according to the given training data.
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Training vector, where `n_samples` is the number of samples and
+            `n_features` is the number of features.
+        y : array-like of shape (n_samples,)
+            Target values.
+        Returns
+        -------
+        self : object
+            Fitted estimator.
+        """
+        n_samples, n_features = X.shape
+        _, n_tiers = y.shape
+
+        label_encoders = [sklearn.preprocessing.LabelEncoder() for _ in range(n_tiers)]
+
+        # y_inds[i][j] is example j's label at tier i
+        y_inds = [le.fit_transform(y[:, i]) for i, le in enumerate(label_encoders)]
+
+        self.classes_ = [le.classes_ for le in label_encoders]
+        n_classes = [cls.size for cls in self.classes_]
+
+        if any(n < 2 for n in n_classes):
+            raise ValueError("All levels need > 1 class; got %s" % (n_classes))
+
+        self.centroids_ = [
+            np.empty((n, n_features), dtype=np.float64) for n in n_classes
+        ]
+
+        # tier: which tier we're on (0 -> kingdom, 1 -> phylum, etc)
+        # n_cls: the number of clases in this tier
+        # y_ind: this tier's class labels for all examples
+        for tier, (n_cls, y_ind) in enumerate(zip(n_classes, y_inds)):
+            for cls in range(n_cls):
+                center_mask = y_ind == cls
+                self.centroids_[tier][cls] = X[center_mask].mean(axis=0)
+
+        return self
+
+    def predict(self, X):
+        """Perform classification on an array of test vectors `X`.
+        The predicted class `C` for each sample in `X` is returned.
+        Parameters
+        ----------
+        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+            Test samples.
+        Returns
+        -------
+        C : ndarray of shape (n_samples,)
+            The predicted classes.
+        Notes
+        -----
+        If the metric constructor parameter is `"precomputed"`, `X` is assumed
+        to be the distance matrix between the data to be predicted and
+        `self.centroids_`.
+        """
+        if not hasattr(self, "centroids_"):
+            raise sklearn.exceptions.NotFittedError()
+
+        kingdoms = self.classes_[0][
+            sklearn.metrics.pairwise_distances_argmin(
+                X, self.centroids_[0], metric=self.metric
+            )
+        ]
+
+        phyla = next_tier_fast(X, self.centroids_[1], kingdoms, self.lookup_vecs[0])
+        print("Predicted phyla.")
+        orders = next_tier_fast(X, self.centroids_[2], phyla, self.lookup_vecs[1])
+        print("Predicted orders.")
+        classes = next_tier_fast(X, self.centroids_[3], orders, self.lookup_vecs[2])
+        print("Predicted classes.")
+        families = next_tier_fast(X, self.centroids_[4], classes, self.lookup_vecs[3])
+        print("Predicted families.")
+        genuses = next_tier_fast(X, self.centroids_[5], families, self.lookup_vecs[4])
+        print("Predicted genuses.")
+        species = next_tier_fast(X, self.centroids_[6], genuses, self.lookup_vecs[5])
+        print("Predicted species.")
+
+        return np.stack(
+            [kingdoms, phyla, orders, classes, families, genuses, species], axis=-1
+        )
+
+
+def next_tier_fast(X, centroids, prev, next_to_prev):
+    def reduce_fn(dist_chunk, start):
+        classes = np.argsort(dist_chunk, axis=1)
+        indices = (next_to_prev[classes] == prev.reshape((-1, 1))).argmax(axis=1)
+        preds = np.diagonal(classes[:, indices])
+        return preds
+
+    all_preds = np.array(
+        list(
+            sklearn.metrics.pairwise_distances_chunked(
+                X, centroids, reduce_func=reduce_fn
+            )
+        )
+    ).squeeze()
+
+    return all_preds
+
+
+def next_tier(X, centroids, prev, next_to_prev):
+    """
+    This needs to be implemented as a method on HierarchicalNearestCentroid, then used as the callback for pairwise_distance_chunked (can remove the call to pairwise distance and will be much faster).
+
+    X (n_examples x n_features array): example features
+    centroids (n_classes x n_features array): centroids for the classes
+    prev (n_examples array): X's parent class (if we are predicting phylum, then X's kingdom)
+    prev_to_next (n_classes array): prev_to_next[i] = class i's parent
+    """
+
+    distances = sklearn.metrics.pairwise_distances(X, centroids)
+
+    classes = np.argsort(distances, axis=1)
+
+    prev = prev.reshape((-1, 1))
+    indices = (next_to_prev[classes] == prev).argmax(axis=1)
+
+    preds = np.diagonal(classes[:, indices])
+
+    return preds

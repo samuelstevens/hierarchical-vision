@@ -1,17 +1,33 @@
+""""
+Does linear classification with fixed features.
+
+The features are feature representations from pre-trained deep learning
+models, where each image produces 10 representations from torchvision's TenCrop.
+
+1. Regular, center crop
+2. Regular, random crop
+3. Horizontal flip, center crop
+4. Horizontal flip, random crop
+
+For 10-shot 2000-way classification, we have 20K images x 4 "augmentations" giving us 
+80K feature vectors with 2000 classes. Then we train a logistic regression classifier 
+to predict the class from the feature vector.
+
+We tune hyperparameter using k-fold classification. We use sklearn for simplicity.
 """
-To do simple shot classification, we simply put all of the images in the training set through the pretrained network to gather feature representations. Then we build a nice matrix of features (n_features x n_examples) and do nearest centroid classification. We include L2 normalization and centered L2-normalization options as well.
-"""
+
 import argparse
 import os
 
 import composer.functional
 import numpy as np
+import sklearn.linear_model
 import sklearn.metrics
-import sklearn.neighbors
+import sklearn.pipeline
 import torch
 from composer.utils import dist
 from omegaconf import OmegaConf
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, default_collate
 from torchvision import transforms
 from tqdm.auto import tqdm
 
@@ -26,7 +42,7 @@ import wandb
 
 def cache_path(config, is_train) -> str:
     save_dir = os.path.join(
-        config.machine.save_root, "simpleshot-features", config.run_name
+        config.machine.save_root, "linear-probe-features", config.run_name
     )
     os.makedirs(save_dir, exist_ok=True)
 
@@ -42,6 +58,20 @@ def tree_distance(labels, preds, *, tree_dists):
     return np.sum(tree_dists[preds, labels]) / labels.size
 
 
+def collate_tuples(samples):
+    """
+    samples: [(imgs, label)]
+        where imgs is a tuple of images
+    """
+    inputs, outputs = [], []
+    for imgs, label in samples:
+        for img in imgs:
+            inputs.append(img)
+            outputs.append(label)
+
+    return torch.stack(inputs), torch.tensor(outputs)
+
+
 def build_dataloader(config: configs.Config, is_train: bool) -> DataLoader:
     if is_train:
         split = "train"
@@ -54,21 +84,22 @@ def build_dataloader(config: configs.Config, is_train: bool) -> DataLoader:
     transform = [transforms.ToTensor()]
     if data_cfg.resize_size > 0:
         transform.append(transforms.Resize(data_cfg.resize_size))
-    transform.append(transforms.CenterCrop(data_cfg.crop_size))
     assert all(m < 1 for m in data_cfg.channel_mean)
     assert all(s < 1 for s in data_cfg.channel_std)
     transform.append(
         transforms.Normalize(mean=data_cfg.channel_mean, std=data_cfg.channel_std)
     )
+    # if is_train:
+    # transform.append(transforms.TenCrop(data_cfg.crop_size))
+    # collate_fn = collate_tuples
+    # else:
+    transform.append(transforms.CenterCrop(data_cfg.crop_size))
+    collate_fn = default_collate
+
     transform = transforms.Compose(transform)
 
     path = config.machine.datasets[data_cfg.path]
-    if config.simpleshot.hierarchical:
-        dataset = hierarchy.HierarchicalImageFolder(
-            os.path.join(path, split), transform
-        )
-    else:
-        dataset = data.ImageFolder(os.path.join(path, split), transform)
+    dataset = data.ImageFolder(os.path.join(path, split), transform)
 
     sampler = dist.get_sampler(dataset, drop_last=False, shuffle=False)
 
@@ -80,6 +111,7 @@ def build_dataloader(config: configs.Config, is_train: bool) -> DataLoader:
         num_workers=8,
         pin_memory=True,
         persistent_workers=True,
+        collate_fn=collate_fn,
     )
 
     return dataloader
@@ -154,6 +186,18 @@ def center(features):
     return features / mean
 
 
+def build_linear_model():
+    return sklearn.model_selection.GridSearchCV(
+        sklearn.pipeline.make_pipeline(
+            sklearn.preprocessing.StandardScaler(),
+            sklearn.linear_model.SGDClassifier(loss="log_loss"),
+        ),
+        {"sgdclassifier__alpha": [0.0001, 0.01, 1.0]},
+        n_jobs=8,
+        verbose=2,
+    )
+
+
 def main(config):
     wandb.init(name=config.run_name)
 
@@ -162,40 +206,27 @@ def main(config):
     test_features, test_classes = load_features(config, is_train=False)
     print("Loaded test features.")
 
-    assert config.model.variant == "simpleshot", config.model.variant
+    # Shuffle the training data.
+    random_indices = np.arange(len(train_features))
+    np.random.default_rng().shuffle(random_indices)
+    train_features = train_features[random_indices]
+    train_classes = train_classes[random_indices]
 
-    if config.simpleshot.centered:
-        train_features = center(train_features)
-        test_features = center(test_features)
-    if config.simpleshot.l2_normalized:
-        train_features = l2_normalize(train_features)
-        test_features = l2_normalize(test_features)
+    assert config.model.variant == "linear-probe", config.model.variant
+    # Build the model
+    clf = build_linear_model()
+    print("Built the model.")
 
-    if config.simpleshot.hierarchical:
-        lookups = hierarchy.build_parent_label_lookup(
-            os.path.join(config.machine.datasets[config.train_dataset.path])
-        )
-        clf = hierarchy.HierarchicalNearestCentroid(lookups)
-    else:
-        clf = sklearn.neighbors.NearestCentroid()
-
+    # Fit the model.
     clf.fit(train_features, train_classes)
+    print("Trained the model.")
 
     preds = clf.predict(test_features)
+    print("Made predictions.")
 
     tree_dists = hierarchy.build_tree_dist_matrix(
         config.machine.datasets[config.eval_dataset.path]
     ).numpy()
-
-    if config.simpleshot.hierarchical:
-        # I probably could calculate some tier-level statistics (like kingdom accuracy)
-        n_examples, n_tiers = test_classes.shape
-        assert n_tiers == 7
-        test_classes = test_classes[:, -1]
-
-        n_preds, n_tiers = preds.shape
-        assert n_tiers == 7
-        preds = preds[:, -1]
 
     metrics = {
         "acc@1": np.sum(preds == test_classes) / len(test_classes),

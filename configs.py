@@ -51,8 +51,7 @@ class OptimConfig:
 @dataclass
 class SchedulerConfig:
     name: str = "CosineAnnealingWithWarmupScheduler"
-    t_warmup: str = "8ep"
-    alpha_f: float = 0.0
+    args: Args = field(default_factory=lambda: {"t_warmup": "8ep", "alpha_f": 0.0})
 
 
 # The only thing I'm ever doing is saving the last model or not saving anything.
@@ -70,6 +69,13 @@ class SaveConfig:
 class WandbConfig:
     entity: str = "imageomics"
     project: str = "hierarchical-vision"
+
+
+@dataclass
+class SimpleShotConfig:
+    centered: bool = False
+    l2_normalized: bool = False
+    hierarchical: bool = False
 
 
 @dataclass
@@ -118,3 +124,5 @@ class Config:
     save: SaveConfig = field(default_factory=SaveConfig)
 
     wandb: WandbConfig = field(default_factory=WandbConfig)
+
+    simpleshot: SimpleShotConfig = field(default_factory=SimpleShotConfig)

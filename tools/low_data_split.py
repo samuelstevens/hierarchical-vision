@@ -179,8 +179,8 @@ def main():
         dist_val.max(),
     )
 
-    helpers.save_data(x_train, y_train, output_dir / "train")
-    helpers.save_data(x_val, y_val, output_dir / "val")
+    save_data(x_train, y_train, output_dir / "train")
+    save_data(x_val, y_val, output_dir / "val")
     logger.info("Done. [train: %d, val: %d]", len(y_train), len(y_val))
 
 

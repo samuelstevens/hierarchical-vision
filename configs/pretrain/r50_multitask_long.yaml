@@ -1,0 +1,28 @@
+run_name: r50_multitask_long
+# 1024 epochs
+max_duration: 1024ep
+
+hierarchy:
+  variant: multitask
+  multitask_coeffs: [ 8, 5.65, 4, 2.82, 2, 1.41, 1 ]
+
+scheduler:
+  name: ConstantWithWarmupScheduler
+  args:
+    t_warmup: 8ep
+
+algorithms:
+  - cls: BlurPool
+  - cls: ChannelsLast
+  - cls: EMA
+    args:
+      half_life: 100ba
+      update_interval: 20ba
+  - cls: LabelSmoothing
+    args:
+      smoothing: 0.08
+  - cls: GradientClipping
+    args:
+      clipping_type: norm
+      clipping_threshold: 2.0
+

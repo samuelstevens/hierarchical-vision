@@ -60,9 +60,8 @@ def main(config):
     optimizer = optim.build_optimizer(config, composer_model)
 
     # Learning rate scheduler: LR warmup then cosine decay for the rest of training
-    lr_scheduler = composer.optim.CosineAnnealingWithWarmupScheduler(
-        t_warmup=config.scheduler.t_warmup, alpha_f=config.scheduler.alpha_f
-    )
+    cls = getattr(composer.optim, config.scheduler.name)
+    lr_scheduler = cls(**config.scheduler.args)
 
     if is_master:
         wandb.init(name=config.run_name, tags=config.tags)
