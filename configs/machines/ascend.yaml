@@ -1,3 +1,5 @@
+grad_accum: 1
+
 machine:
   datasets:
     inat21: /fs/scratch/PAS2136/hierarchical-vision/datasets/inat21/raw
