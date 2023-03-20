@@ -144,7 +144,6 @@ def build_dataspec(
 
     path = config.machine.datasets[data_cfg.path]
     dataset = dataset_cls(os.path.join(path, split), transform)
-    tree_dists = hierarchy.build_tree_dist_matrix(path)
     sampler = dist.get_sampler(
         dataset, drop_last=data_cfg.drop_last, shuffle=data_cfg.shuffle
     )
@@ -163,6 +162,10 @@ def build_dataspec(
         ),
         device_transforms=device_transform_fn,
     )
+
+    tree_dists = None
+    if not config.is_train:
+        tree_dists = hierarchy.build_tree_dist_matrix(path)
 
     return dataspec, DatasetInfo(num_classes=dataset.num_classes, tree_dists=tree_dists)
 
